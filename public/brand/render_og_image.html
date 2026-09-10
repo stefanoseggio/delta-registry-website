@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html><head><style>
+html,body{margin:0;padding:0;width:1200px;height:630px;overflow:hidden;}
+svg{display:block;width:1200px;height:630px;}
+</style></head>
+<body>
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgfade" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A0F1D"/>
+      <stop offset="100%" stop-color="#0D1428"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#00F2FE" stroke-width="1" opacity="0.05"/>
+    </pattern>
+    <linearGradient id="facetLeft" x1="20%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#5FFBFF"/>
+      <stop offset="45%" stop-color="#00D9E8"/>
+      <stop offset="100%" stop-color="#0A6E76"/>
+    </linearGradient>
+    <linearGradient id="facetRight" x1="15%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#0F8A93"/>
+      <stop offset="55%" stop-color="#0A4E56"/>
+      <stop offset="100%" stop-color="#061C22"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bgfade)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <g stroke="#00F2FE" stroke-width="1" opacity="0.25">
+    <line x1="60" y1="80" x2="140" y2="150"/>
+    <line x1="140" y1="150" x2="80" y2="230"/>
+    <line x1="60" y1="80" x2="170" y2="55"/>
+    <line x1="1140" y1="90" x2="1060" y2="165"/>
+    <line x1="1060" y1="165" x2="1125" y2="245"/>
+    <line x1="1140" y1="90" x2="1030" y2="60"/>
+    <line x1="1130" y1="510" x2="1050" y2="570"/>
+    <line x1="1050" y1="570" x2="970" y2="530"/>
+  </g>
+  <g fill="#00F2FE" opacity="0.5">
+    <circle cx="60" cy="80" r="3.5"/><circle cx="140" cy="150" r="3"/><circle cx="80" cy="230" r="3"/><circle cx="170" cy="55" r="3"/>
+    <circle cx="1140" cy="90" r="3.5"/><circle cx="1060" cy="165" r="3"/><circle cx="1125" cy="245" r="3"/><circle cx="1030" cy="60" r="3"/>
+    <circle cx="1130" cy="510" r="3"/><circle cx="1050" cy="570" r="3.5"/><circle cx="970" cy="530" r="3"/>
+  </g>
+
+  <!-- Small logo mark, top-left -->
+  <g transform="translate(64,56)">
+    <polygon points="30,4 6,58 30,58" fill="url(#facetLeft)"/>
+    <polygon points="30,4 30,58 54,58" fill="url(#facetRight)"/>
+    <line x1="30" y1="4" x2="30" y2="58" stroke="#080B16" stroke-width="1.5"/>
+  </g>
+  <text x="130" y="90" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="22" font-weight="700" letter-spacing="1" fill="#F8FAFC">DELTA <tspan fill="#00F2FE">REGISTRY</tspan></text>
+  <text x="130" y="112" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" letter-spacing="0.5" fill="#8B96AC">PRODUCTION FLEET &#183; 18 ACTORS DEPLOYED ON APIFY</text>
+
+  <!-- Headline -->
+  <g font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-weight="700">
+    <text x="64" y="312" font-size="64" fill="#F8FAFC">You don&#8217;t pay for a crawl.</text>
+    <text x="64" y="384" font-size="64" fill="#00F2FE">You pay for a change.</text>
+  </g>
+
+  <rect x="64" y="440" width="280" height="2" fill="#1E2A44"/>
+
+  <!-- Supporting line -->
+  <text x="64" y="486" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20" fill="#8B96AC">Pay-per-event &#183; delta-tracked &#183; zero subscriptions</text>
+  <text x="64" y="516" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20" fill="#8B96AC">7 domains &#183; sanctions, procurement, patents, pharma &amp; more</text>
+</svg>
+</body></html>
