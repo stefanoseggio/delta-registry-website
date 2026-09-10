@@ -1,3 +1,4 @@
+# Auto-deploy connectivity test — safe to remove this comment on the next real change
 .vercel
 node_modules
 .next
