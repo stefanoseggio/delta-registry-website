@@ -163,7 +163,7 @@ export const ACTORS: Actor[] = [
     storeUrl: 'https://apify.com/stefano_seggio/pba-tenders-monitor',
   },
   {
-    slug: 'primer-actor',
+    slug: 'page-metadata-extractor',
     title: 'Page Metadata Extractor (CleanMeta)',
     domain: 'SEO & Data Pipelines',
     category: 'SEO_TOOLS',
@@ -171,7 +171,7 @@ export const ACTORS: Actor[] = [
     dataSource: 'Any target URL — title, description, canonical, Open Graph, H1, word count',
     pricing: [{ eventName: 'result', priceUsd: 0.0005, unit: 'per result (never per wasted run)' }],
     deltaEvents: [],
-    storeUrl: 'https://apify.com/stefano_seggio/primer-actor',
+    storeUrl: 'https://apify.com/stefano_seggio/page-metadata-extractor',
   },
   {
     slug: 'salta-compras-monitor',
