@@ -1,8 +1,24 @@
 import type { Actor } from './types'
 
 // Real, deployed fleet data — every field here traces to the actor's live Apify Store listing
-// (apify.com/stefano_seggio/<slug>) as of 2026-09-09. No actor, price, or event type on this page
-// is invented. Where a value isn't independently re-verified in this file, it is not included.
+// (apify.com/stefano_seggio/<slug>) or its own repository README as of 2026-09-16. No actor,
+// price, or event type on this page is invented.
+//
+// `updateFrequency` is deliberately the same string on every actor: every actor in this fleet
+// runs on Apify's own Scheduler, configured per-run by whoever operates it — there is no fixed
+// operator-side cadence to report, and printing a fake "every 6 hours" per actor would be a
+// false precision claim on a live commercial page.
+//
+// `byok` is 'required' only for actors that cannot run at all without a customer-supplied
+// third-party key (KIPRIS Plus), 'optional' where a customer key unlocks one enrichment tier or
+// jurisdiction but the actor runs without one (actor-18's Hunter.io/PDL tier, actor-21's EPO
+// coverage), and 'none' everywhere else — independently confirmed against each actor's own
+// README pricing/BYOK disclosure section on 2026-09-16.
+//
+// `isPublic` was independently re-verified against the live Apify API (GET /v2/acts/{id}) for
+// every actor added in the 2026-09-16 pass; all 24 actors in this fleet are live and public.
+const SCHEDULE = 'Configurable — runs on your own Apify Scheduler (cron); no fixed operator cadence'
+
 export const ACTORS: Actor[] = [
   {
     slug: 'actor-18-b2b-lead-magnet',
@@ -17,6 +33,11 @@ export const ACTORS: Actor[] = [
     ],
     deltaEvents: [],
     storeUrl: 'https://apify.com/stefano_seggio/actor-18-b2b-lead-magnet',
+    githubUrl: 'https://github.com/stefanoseggio/actor-18-b2b-lead-magnet',
+    byok: 'optional',
+    byokDetail: 'Optional Hunter.io / People Data Labs key unlocks the enriched_lead tier — basic_lead needs no key.',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'actor-19-maritime-sanctions-monitor',
@@ -28,6 +49,10 @@ export const ACTORS: Actor[] = [
     pricing: [{ eventName: 'result', priceUsd: 0.0005, unit: 'per record' }],
     deltaEvents: ['NEW', 'STATUS_CHANGE', 'DELISTED'],
     storeUrl: 'https://apify.com/stefano_seggio/actor-19-maritime-sanctions-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/actor-19-maritime-sanctions-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'actor-20-mdb-procurement-monitor',
@@ -42,6 +67,10 @@ export const ACTORS: Actor[] = [
     ],
     deltaEvents: ['NEW', 'STATUS_CHANGE'],
     storeUrl: 'https://apify.com/stefano_seggio/actor-20-mdb-procurement-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/actor-20-mdb-procurement-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'actor-21-patent-ip-enforcement-monitor',
@@ -56,6 +85,11 @@ export const ACTORS: Actor[] = [
     ],
     deltaEvents: ['NEW', 'TERMINATED'],
     storeUrl: 'https://apify.com/stefano_seggio/actor-21-patent-ip-enforcement-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/actor-21-patent-ip-enforcement-monitor',
+    byok: 'optional',
+    byokDetail: 'Optional EPO opposition-data key unlocks EU coverage — USPTO PTAB coverage needs no key.',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'actor-22-drug-safety-recalls-monitor',
@@ -67,6 +101,10 @@ export const ACTORS: Actor[] = [
     pricing: [{ eventName: 'result', priceUsd: 0.001, unit: 'per delivered record' }],
     deltaEvents: ['NEW'],
     storeUrl: 'https://apify.com/stefano_seggio/actor-22-drug-safety-recalls-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/actor-22-drug-safety-recalls-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'actor-24-clinical-trials-delta-engine',
@@ -81,6 +119,10 @@ export const ACTORS: Actor[] = [
     ],
     deltaEvents: ['NEW_TRIAL', 'STATUS_CHANGE'],
     storeUrl: 'https://apify.com/stefano_seggio/actor-24-clinical-trials-delta-engine',
+    githubUrl: 'https://github.com/stefanoseggio/actor-24-clinical-trials-delta-engine',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'australia-grantconnect-monitor',
@@ -92,6 +134,10 @@ export const ACTORS: Actor[] = [
     pricing: [{ eventName: 'result', priceUsd: 0, unit: 'pay per result (see live Store pricing)' }],
     deltaEvents: ['NEW', 'UPDATED'],
     storeUrl: 'https://apify.com/stefano_seggio/australia-grantconnect-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/australia-grantconnect-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'cordoba-compras-monitor',
@@ -103,6 +149,10 @@ export const ACTORS: Actor[] = [
     pricing: [{ eventName: 'result', priceUsd: 0, unit: 'pay per result (see live Store pricing)' }],
     deltaEvents: ['NEW', 'UPDATED'],
     storeUrl: 'https://apify.com/stefano_seggio/cordoba-compras-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/cordoba-compras-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'diario-oficial-cl-monitor',
@@ -114,6 +164,10 @@ export const ACTORS: Actor[] = [
     pricing: [{ eventName: 'result', priceUsd: 0.003, unit: 'per record' }],
     deltaEvents: ['NEW_LISTING', 'UPDATED'],
     storeUrl: 'https://apify.com/stefano_seggio/diario-oficial-cl-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/diario-oficial-cl-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'entrerios-compras-monitor',
@@ -125,6 +179,10 @@ export const ACTORS: Actor[] = [
     pricing: [{ eventName: 'result', priceUsd: 0, unit: 'pay per result (see live Store pricing)' }],
     deltaEvents: ['NEW', 'UPDATED'],
     storeUrl: 'https://apify.com/stefano_seggio/entrerios-compras-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/entrerios-compras-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'florida-tenders-monitor',
@@ -139,6 +197,10 @@ export const ACTORS: Actor[] = [
     ],
     deltaEvents: ['NEW', 'AMENDED', 'CLOSED'],
     storeUrl: 'https://apify.com/stefano_seggio/florida-tenders-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/florida-tenders-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'mendoza-compras-monitor',
@@ -150,6 +212,10 @@ export const ACTORS: Actor[] = [
     pricing: [{ eventName: 'result', priceUsd: 0, unit: 'pay per result (see live Store pricing)' }],
     deltaEvents: ['NEW', 'UPDATED'],
     storeUrl: 'https://apify.com/stefano_seggio/mendoza-compras-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/mendoza-compras-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'pba-tenders-monitor',
@@ -161,6 +227,10 @@ export const ACTORS: Actor[] = [
     pricing: [{ eventName: 'result', priceUsd: 0, unit: 'pay per result (see live Store pricing)' }],
     deltaEvents: ['NEW', 'STATUS_CHANGE'],
     storeUrl: 'https://apify.com/stefano_seggio/pba-tenders-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/pba-tenders-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'page-metadata-extractor',
@@ -172,6 +242,10 @@ export const ACTORS: Actor[] = [
     pricing: [{ eventName: 'result', priceUsd: 0.0005, unit: 'per result (never per wasted run)' }],
     deltaEvents: [],
     storeUrl: 'https://apify.com/stefano_seggio/page-metadata-extractor',
+    githubUrl: 'https://github.com/stefanoseggio/primer-actor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'salta-compras-monitor',
@@ -183,6 +257,10 @@ export const ACTORS: Actor[] = [
     pricing: [{ eventName: 'result', priceUsd: 0, unit: 'pay per result (see live Store pricing)' }],
     deltaEvents: ['NEW', 'UPDATED'],
     storeUrl: 'https://apify.com/stefano_seggio/salta-compras-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/salta-compras-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'santafe-compras-monitor',
@@ -197,6 +275,10 @@ export const ACTORS: Actor[] = [
     ],
     deltaEvents: ['NEW', 'STATUS_CHANGE', 'AMENDED'],
     storeUrl: 'https://apify.com/stefano_seggio/santafe-compras-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/santafe-compras-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'tucuman-compras-monitor',
@@ -208,6 +290,10 @@ export const ACTORS: Actor[] = [
     pricing: [{ eventName: 'result', priceUsd: 0, unit: 'pay per result (see live Store pricing)' }],
     deltaEvents: ['NEW', 'UPDATED'],
     storeUrl: 'https://apify.com/stefano_seggio/tucuman-compras-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/tucuman-compras-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
   {
     slug: 'uk-hse-enforcement-monitor',
@@ -222,12 +308,134 @@ export const ACTORS: Actor[] = [
     ],
     deltaEvents: ['NEW', 'UPDATED'],
     storeUrl: 'https://apify.com/stefano_seggio/uk-hse-enforcement-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/uk-hse-enforcement-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
+  },
+
+  // --- Added 2026-09-16: 6 actors that brought the fleet from 18 to 24. Pricing/BYOK/delta
+  // events below are read directly from each actor's own README "Pricing (Pay-Per-Event)" and
+  // BYOK-disclosure sections; isPublic independently re-verified against the live Apify API.
+  {
+    slug: 'kipris-patent-trademark-status-monitor',
+    title: 'KIPRIS Patent & Trademark Monitor',
+    domain: 'Patent & IP Enforcement',
+    category: 'BUSINESS',
+    jurisdiction: 'South Korea (KIPRIS Plus)',
+    dataSource: 'KIPRIS Plus Open API — Korean patent & utility-model filings by applicant or application number',
+    pricing: [
+      { eventName: 'result', priceUsd: 0.02, unit: 'per new filing or status change' },
+      { eventName: 'result-summary', priceUsd: 0.008, unit: 'per non-status field update' },
+    ],
+    deltaEvents: ['NEW_APPLICATION', 'STATUS_CHANGE', 'UPDATED'],
+    storeUrl: 'https://apify.com/stefano_seggio/kipris-patent-trademark-status-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/kipris-patent-trademark-status-monitor',
+    byok: 'required',
+    byokDetail: 'Requires your own KIPRIS Plus service key — a paid annual license billed directly by KIPRIS, never pooled or resold.',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
+  },
+  {
+    slug: 'singapore-acra-registry-monitor',
+    title: 'Singapore ACRA Registry Monitor',
+    domain: 'Corporate Registries',
+    category: 'BUSINESS',
+    jurisdiction: 'Singapore',
+    dataSource: 'data.gov.sg ACRA Collection 2 — full-field Singapore corporate register (~2.1M entities, UEN-indexed)',
+    pricing: [
+      { eventName: 'result', priceUsd: 0.03, unit: 'per NEW_LISTING or STATUS_CHANGE record' },
+      { eventName: 'result-summary', priceUsd: 0.01, unit: 'per UPDATED record' },
+    ],
+    deltaEvents: ['NEW_LISTING', 'STATUS_CHANGE', 'UPDATED'],
+    storeUrl: 'https://apify.com/stefano_seggio/singapore-acra-registry-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/singapore-acra-registry-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
+  },
+  {
+    slug: 'sec-enforcement-litigation-delta-feed',
+    title: 'SEC Enforcement & Litigation Feed',
+    domain: 'Securities & Financial Enforcement',
+    category: 'BUSINESS',
+    jurisdiction: 'United States (SEC)',
+    dataSource: 'SEC.gov litigation-release & administrative-proceeding RSS feeds + EDGAR CIK resolution',
+    pricing: [
+      { eventName: 'result', priceUsd: 0.05, unit: 'per new enforcement release' },
+      { eventName: 'result-summary', priceUsd: 0.02, unit: 'per updated release' },
+    ],
+    deltaEvents: ['NEW_LISTING', 'UPDATED'],
+    storeUrl: 'https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed',
+    githubUrl: 'https://github.com/stefanoseggio/sec-enforcement-litigation-delta-feed',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
+  },
+  {
+    slug: 'ai-crawler-content-signal-permission-monitor',
+    title: 'AI Crawler Permission Monitor',
+    domain: 'AI Crawler & Content Governance',
+    category: 'SEO_TOOLS',
+    jurisdiction: 'Global',
+    dataSource: 'robots.txt AI-crawler directives + Cloudflare Content-Signal header + llms.txt / llms-full.txt, any domain',
+    pricing: [
+      { eventName: 'result', priceUsd: 0.015, unit: 'per ALLOWED/DISALLOWED directive flip' },
+      { eventName: 'result-summary', priceUsd: 0.006, unit: 'per Content-Signal or llms.txt change' },
+    ],
+    deltaEvents: ['ALLOWED', 'DISALLOWED', 'CHANGED'],
+    storeUrl: 'https://apify.com/stefano_seggio/ai-crawler-content-signal-permission-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/ai-crawler-content-signal-permission-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
+  },
+  {
+    slug: 'aozora-bunko-public-domain-text-feed',
+    title: 'Aozora Bunko Public-Domain Feed',
+    domain: 'Digital Archives & Publishing',
+    category: 'BUSINESS',
+    jurisdiction: 'Japan (Aozora Bunko catalog)',
+    dataSource: "Aozora Bunko's official catalog export — 19,502-row confirmed-public-domain Japanese literature index",
+    pricing: [
+      { eventName: 'result', priceUsd: 0.05, unit: 'per new full-text delivery' },
+      { eventName: 'result-summary', priceUsd: 0.01, unit: 'per metadata-only change or status change' },
+    ],
+    deltaEvents: ['NEW_TEXT', 'STATUS_CHANGE', 'REVISED_TEXT'],
+    storeUrl: 'https://apify.com/stefano_seggio/aozora-bunko-public-domain-text-feed',
+    githubUrl: 'https://github.com/stefanoseggio/aozora-bunko-public-domain-text-feed',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
+  },
+  {
+    slug: 'regione-lombardia-grants-registry-monitor',
+    title: 'Lombardy Grants & Tenders Monitor',
+    domain: 'Government Registers & Procurement',
+    category: 'BUSINESS',
+    jurisdiction: 'Lombardy, Italy',
+    dataSource: 'dati.lombardia.it Socrata SODA API — Anagrafica dei bandi regionali (~1,912 bandi)',
+    pricing: [
+      { eventName: 'result', priceUsd: 0.02, unit: 'per NEW_LISTING or STATUS_CHANGE record' },
+      { eventName: 'result-summary', priceUsd: 0.008, unit: 'per UPDATED record' },
+    ],
+    deltaEvents: ['NEW_LISTING', 'STATUS_CHANGE', 'UPDATED'],
+    storeUrl: 'https://apify.com/stefano_seggio/regione-lombardia-grants-registry-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/regione-lombardia-grants-registry-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
   },
 ]
 
 export const ACTOR_COUNT = ACTORS.length
 
 export const DOMAINS = Array.from(new Set(ACTORS.map((a) => a.domain)))
+
+// Real GitHub repo count for github.com/stefanoseggio, independently re-verified via
+// `gh api users/stefanoseggio/repos` on 2026-09-16 — not derived from ACTORS.length, since
+// several repos (distribution/profile/GTM tooling) aren't actor wrappers at all.
+export const GITHUB_REPO_COUNT = 34
 
 // Real values with a "pricing not independently re-verified for this figure" placeholder
 // (priceUsd: 0) are rendered on the site as "See live Store pricing →" rather than "$0.00" —

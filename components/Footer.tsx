@@ -4,7 +4,7 @@ export function Footer() {
   return (
     <footer className="border-t border-border/60 bg-obsidian">
       <div className="mx-auto max-w-7xl px-6 py-12">
-        <div className="grid gap-8 md:grid-cols-3">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="font-mono text-sm text-contrast">
               DELTA<span className="text-cyan-accent">REGISTRY</span>
@@ -31,6 +31,51 @@ export function Footer() {
                   className="hover:text-cyan-accent"
                 >
                   Apify Store profile
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <div className="text-sm font-medium text-contrast">Connect</div>
+            <ul className="mt-3 space-y-2 text-sm text-muted">
+              <li>
+                <a
+                  href="https://github.com/stefanoseggio"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-cyan-accent"
+                >
+                  GitHub
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://apify.com/stefano_seggio"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-cyan-accent"
+                >
+                  Apify Store
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://dev.to/stefanoseggio"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-cyan-accent"
+                >
+                  Dev.to
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://www.linkedin.com/in/stefanoseggio-deltaregistry"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-cyan-accent"
+                >
+                  LinkedIn
                 </a>
               </li>
             </ul>

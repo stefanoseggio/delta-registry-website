@@ -1,5 +1,5 @@
-import { ACTORS } from '@/lib/actors'
-import type { Actor, PricingEvent } from '@/lib/types'
+import { ACTORS, ACTOR_COUNT } from '@/lib/actors'
+import type { Actor, ByokStatus, PricingEvent } from '@/lib/types'
 
 // This project's own maritime-sanctions actor anchors the comparison below. Its price and delta
 // events are read directly from the shared ACTORS data contract — never restated by hand — so this
@@ -87,10 +87,33 @@ function buildComparisonRows(maritimeActor: Actor): ComparisonRow[] {
   ]
 }
 
+// Actors requiring or offering a customer-supplied third-party API key. Filtered live off the
+// ACTORS array — not hand-typed — so this list can't drift out of sync with lib/actors.ts as
+// the fleet changes or as byok fields are added, removed, or reclassified.
+function getByokActors(): Actor[] {
+  return ACTORS.filter((actor) => actor.byok !== 'none')
+}
+
+function ByokBadge({ status }: { status: ByokStatus }) {
+  if (status === 'required') {
+    return (
+      <span className="shrink-0 rounded border border-cyan-accent/40 bg-cyan-accent/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-cyan-accent">
+        Required
+      </span>
+    )
+  }
+  return (
+    <span className="shrink-0 rounded border border-border/60 bg-obsidian px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted">
+      Optional
+    </span>
+  )
+}
+
 export function EconomicEngine() {
   const maritimeActor = requireActor(MARITIME_SLUG)
   const granularityActor = requireActor(GRANULARITY_SLUG)
   const comparisonRows = buildComparisonRows(maritimeActor)
+  const byokActors = getByokActors()
 
   return (
     <section id="economics" className="border-t border-border/60 bg-obsidian py-24">
@@ -228,6 +251,87 @@ export function EconomicEngine() {
           >
             See live Store pricing →
           </a>
+        </div>
+
+        <div className="mt-16">
+          <span className="font-mono text-xs uppercase tracking-[0.2em] text-cyan-accent">Cost layering</span>
+          <h3 className="mt-3 text-xl font-semibold text-contrast">
+            Apify Platform Cost vs. Upstream API Cost
+          </h3>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted">
+            The per-event prices in this fleet&apos;s own pricing tables — the ones shown throughout
+            this page and on every actor&apos;s Store listing — are 100% of what Delta Registry
+            charges. There is no second, hidden layer folded into that number.
+          </p>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted">
+            Separately, any actor with a BYOK status of{' '}
+            <span className="font-mono text-contrast">required</span> or{' '}
+            <span className="font-mono text-contrast">optional</span> also depends on a
+            third-party API — KIPRIS Plus, Hunter.io, People Data Labs, or the optional EPO
+            opposition-data feed — that the customer must hold their own account and key for. That
+            third party bills the customer directly, on its own pricing, at whatever rate it sets.
+            This fleet never marks that cost up, never pools customer keys across runs, and never
+            touches or routes that billing relationship in any way.
+          </p>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-lg border border-cyan-accent/30 bg-cyan-accent/5 p-5">
+              <div className="text-sm font-semibold text-cyan-accent">Delta Registry (Apify Store)</div>
+              <p className="mt-2 text-sm leading-relaxed text-muted">
+                The per-event price shown in this fleet&apos;s pricing tables above. Billed by Apify
+                on this project&apos;s behalf, per delivered event, exactly as listed on each actor&apos;s
+                Store page.
+              </p>
+            </div>
+            <div className="rounded-lg border border-border/60 bg-titanium p-5">
+              <div className="text-sm font-semibold text-contrast">Upstream API (BYOK actors only)</div>
+              <p className="mt-2 text-sm leading-relaxed text-muted">
+                Billed directly by the third-party provider — KIPRIS Plus, Hunter.io, People Data
+                Labs, or EPO — to the customer&apos;s own account with that provider. Not collected,
+                marked up, or forwarded by this fleet at any point.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-16">
+          <span className="font-mono text-xs uppercase tracking-[0.2em] text-cyan-accent">Disclosure</span>
+          <h3 className="mt-3 text-xl font-semibold text-contrast">BYOK Disclosure</h3>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted">
+            {byokActors.length} of the {ACTOR_COUNT} actors in this fleet depend on a customer-supplied
+            third-party API key for some or all of their coverage. This list is filtered live from
+            this fleet&apos;s own actor data, not hand-maintained, so it cannot drift out of sync as
+            actors are added or their BYOK status changes.
+          </p>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {byokActors.map((actor) => (
+              <div
+                key={actor.slug}
+                className="flex flex-col gap-3 rounded-lg border border-border/60 bg-titanium p-5 transition hover:border-cyan-accent/40"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h4 className="font-sans text-sm font-semibold text-contrast">{actor.title}</h4>
+                  <ByokBadge status={actor.byok} />
+                </div>
+                <p className="text-xs leading-relaxed text-muted">{actor.byokDetail}</p>
+                <a
+                  href={actor.storeUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-auto pt-1 text-xs font-medium text-cyan-accent hover:underline"
+                >
+                  View on Apify Store →
+                </a>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-6 max-w-3xl text-xs leading-relaxed text-muted">
+            Privacy guarantee: every BYOK key belongs exclusively to the customer&apos;s own account
+            with that third party. This fleet never stores, pools, or reuses a customer&apos;s key
+            across other customers&apos; runs.
+          </p>
         </div>
       </div>
     </section>
