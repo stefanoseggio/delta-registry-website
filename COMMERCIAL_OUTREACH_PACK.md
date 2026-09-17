@@ -152,3 +152,121 @@ patent/trademark status, Dubai Pulse for UAE mainland trade-license coverage spe
 disclosed per-actor, never hidden until after purchase.
 
 **Contact**: {{email}} · GitHub: github.com/stefanoseggio · Apify Store: apify.com/stefano_seggio
+
+---
+
+## Block 4: ICP 3 outreach — Corporate Procurement & Sanctions Screening Platforms
+
+Two genuinely different buyers, two genuinely different pitches — a corporate compliance director
+buying a tool to reduce their own operational risk is not the same conversation as a RegTech
+vendor's Product Manager evaluating a wholesale data source to embed in their own product. Sending
+either sequence to the wrong sub-track would read as generic and probably hurt reply rates more
+than sending nothing.
+
+### Sub-Track A — End-User Corporates (VP of Corporate Compliance / Procurement Directors)
+
+**Sequence A1 — Subject: How many portals is your team checking by hand?**
+
+> Hi {{FirstName}},
+>
+> A quick, specific question: does {{Company}} currently screen vendors/counterparties against
+> OFAC's vessel sanctions list, or track tenders across government procurement portals in more than
+> one country? If so, is that a scheduled manual check, or something automated?
+>
+> I run 28 narrow, single-source monitors on Apify — each one wraps exactly one public register
+> (OFAC/UN vessel sanctions, UAE corporate registries across Dubai Mainland/ADGM/DIFC, Singapore
+> ACRA, government tenders across 12 portals in Argentina, Chile, Florida, Australia, the UK, and
+> the EU). Every one is delta-tracked and schedule-driven — you set the cadence, and you're billed
+> only when a record is genuinely new or changed. An unchanged check costs $0.00, every run.
+>
+> If {{Company}} already has a compliance stack, this likely plugs in underneath it rather than
+> replacing anything. Worth 15 minutes to see which of the 28 actually maps to what you're covering
+> today?
+>
+> {{Signature}}
+
+**Sequence A2 (Day 5, if no reply) — Subject: Runs directly in Claude/Cursor if your team already uses either**
+
+> Hi {{FirstName}},
+>
+> One more angle in case it's more useful than the first note: if anyone on your compliance or
+> procurement team already uses Claude Code, Claude Desktop, or Cursor, every one of these 28
+> monitors is already callable as a native tool — no integration project, no API client to build.
+> Connect once, and an analyst (or their own agent workflow) can ask "check this vessel against
+> OFAC" or "any new UAE corporate filings for this entity" directly, billed per real event on your
+> own Apify account.
+>
+> Setup is a single script (`connect_mcp.sh` / `connect_mcp.ps1`) that prompts for your own Apify
+> token and never leaves your machine — full config here: {{MCP_INTEGRATION.md URL}}.
+>
+> If it's still not the right fit, no further follow-up from me.
+>
+> {{Signature}}
+
+### Sub-Track B — RegTech / Compliance Software Vendors (Product Managers / OEM Data Partnership Leads)
+
+**Sequence B1 — Subject: A wholesale data layer, not a competing product**
+
+> Hi {{FirstName}},
+>
+> Reaching out because {{Company}} builds {{their real product category — e.g. "KYB/sanctions
+> screening software"}}, and I run 28 narrow, single-source monitors that might be a cheaper,
+> faster wholesale layer under what you already ship, rather than something that competes with it.
+>
+> Each monitor wraps exactly one public register (OFAC/UN vessel sanctions, UAE corporate
+> registries, Singapore ACRA, SEC enforcement with EDGAR CIK resolution, UK Modern Slavery
+> Statement Registry, and 23 others) at real, published Pay-Per-Event pricing — from $0.0005 to
+> $0.05 per event depending on the source, no negotiation required to see the real number. If
+> you're currently building and maintaining your own scrapers against any of these same sources,
+> the honest comparison is your fully-loaded maintenance cost against our per-event price, not a
+> feature list.
+>
+> Every actor's own documentation discloses what it explicitly does *not* cover — which matters
+> more to a vendor reselling this under your own brand than to an end-user, since a hidden gap in a
+> data source you didn't build becomes a support ticket against your product, not ours. Worth a
+> technical call to see if any of the 28 covers a source you're currently maintaining in-house?
+>
+> {{Signature}}
+
+**Sequence B2 (Day 6, if no reply) — Subject: The actual integration surface, if useful without a call**
+
+> Hi {{FirstName}},
+>
+> In case a call isn't the right next step yet: the full technical integration surface is public —
+> {{MCP_INTEGRATION.md URL}} for the native MCP/agent-tooling path, or direct Apify API calls
+> (`apify-client` in Python/Node) if you'd rather pull data into your own pipeline without an
+> agent layer at all. Either way, the underlying data contract (a shared UMS envelope —
+> `event_type`, content/status fingerprints, `record_id`) is the same regardless of which
+> integration path you pick, so evaluating one doesn't lock you into the other.
+>
+> If OEM/wholesale data partnerships are handled by someone else on your team, a pointer in their
+> direction would be genuinely useful — otherwise I'll leave this here.
+>
+> {{Signature}}
+
+### LinkedIn InMail — RegTech Systems Architects (the technical evaluator within Sub-Track B)
+
+This persona is not the commercial decision-maker Sequence B1/B2 targets — they're the person who
+actually has to integrate and maintain whatever data source gets chosen, and they'll kill a deal a
+Product Manager likes if the integration looks fragile. The pitch here is entirely technical.
+
+**InMail 1**
+
+> Hi {{FirstName}} — technical question, not a sales pitch: if you're evaluating third-party
+> regulatory/registry data sources to embed in {{Company}}'s product, how are you currently
+> handling schema drift when an upstream source (a government portal, a sanctions list) changes
+> shape under you? I run 28 single-source Apify actors, each with a shared UMS output envelope
+> (`event_type`, `record_id`, separate content/status fingerprints) so a consuming integration
+> doesn't need bespoke parsing per source. Full real output schemas are documented per-actor, not
+> abstracted away — happy to send the exact schema for whichever source is closest to something
+> you're already covering.
+
+**InMail 2**
+
+> Hi {{FirstName}} — following up with something concrete rather than another pitch: every one of
+> the 28 actors is independently callable via Apify's hosted MCP server (real JSON-RPC 2.0 over
+> Streamable HTTP, no proprietary transport), and I validated the full round-trip live — real
+> `tools/call`, real Apify run ID, real schema-valid data back, in about 11 seconds for a
+> lightweight source. Full validation log (real run ID, real latency numbers, not rounded) is
+> public if you want to see the actual protocol trace before a first call:
+> {{LOCAL_MCP_VALIDATION_REPORT.md URL}}.
