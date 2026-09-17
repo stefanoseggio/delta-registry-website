@@ -74,6 +74,33 @@ Apify API themselves, not a variable this app reads.
 
 Deployed continuously on Vercel from the `main` branch.
 
+## Quick Start for Enterprise
+
+Every actor in this fleet is callable today from Claude Code, Claude Desktop, or Cursor via
+Apify's own hosted MCP server — no custom integration, no SDK to install, no infrastructure to
+run. The full closed-scope endpoint (all 28 actors, none of Apify's other 70,000+ Store actors in
+scope), the exact verified client config for each tool, and the real per-tool BYOK/pricing/routing
+notes are in [`MCP_INTEGRATION.md`](./MCP_INTEGRATION.md).
+
+To connect your own Claude Code or Cursor installation in one step, run the onboarding script for
+your platform — each one prompts you for your own Apify API token (never logged, never written in
+plaintext) and configures whichever client it finds installed:
+
+```bash
+# macOS / Linux / Git Bash on Windows
+./connect_mcp.sh
+```
+
+```powershell
+# Windows PowerShell
+.\connect_mcp.ps1
+```
+
+This exact end-to-end path — real config injection, then a real live tool call through the actual
+MCP wire protocol — was independently validated against a live actor run; see
+[`LOCAL_MCP_VALIDATION_REPORT.md`](./LOCAL_MCP_VALIDATION_REPORT.md) for the real run ID, latency,
+and returned data from that test.
+
 ## About Delta Registry
 
-Delta Registry is a pay-per-event regulatory and compliance data infrastructure operation built and operated by **Stefano Seggio** — 24 Apify Actors spanning government procurement, regulatory enforcement, patent/trademark monitoring, and sanctions/compliance screening. Browse the full Actor catalog on the [Apify Store](https://apify.com/stefano_seggio) or [GitHub](https://github.com/stefanoseggio). For enterprise licensing or a custom monitor, connect on [LinkedIn](https://www.linkedin.com/in/stefanoseggio-deltaregistry).
+Delta Registry is a pay-per-event regulatory and compliance data infrastructure operation built and operated by **Stefano Seggio** — 28 Apify Actors spanning government procurement, regulatory enforcement, patent/trademark monitoring, sanctions/compliance screening, corporate registries, and sovereign debt markets. Browse the full Actor catalog on the [Apify Store](https://apify.com/stefano_seggio) or [GitHub](https://github.com/stefanoseggio). For enterprise licensing or a custom monitor, connect on [LinkedIn](https://www.linkedin.com/in/stefanoseggio-deltaregistry).
