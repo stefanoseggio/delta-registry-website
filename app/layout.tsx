@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
+import { ACTOR_COUNT } from '@/lib/actors'
 import './globals.css'
 
 const title = 'Delta Registry — Regulatory & Compliance Data Infrastructure'
-const description =
-  'Delta Registry runs 18 production data-extraction pipelines on Apify — sanctions screening, government procurement, patent enforcement, drug safety, and clinical trial monitoring. Pay-per-event, delta-tracked: you only pay for data that actually changed.'
+const description = `Delta Registry runs ${ACTOR_COUNT} production data-extraction pipelines on Apify — sanctions screening, government procurement, patent enforcement, corporate registry monitoring, sovereign debt tracking, drug safety, and clinical trial monitoring. Pay-per-event, delta-tracked: you only pay for data that actually changed.`
 
 export const metadata: Metadata = {
   title,

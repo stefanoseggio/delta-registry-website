@@ -150,7 +150,7 @@ function buildFaqEntries(): FaqEntry[] {
       ),
     },
     {
-      question: 'Why 24 separate actors instead of one monolithic scraper?',
+      question: `Why ${ACTOR_COUNT} separate actors instead of one monolithic scraper?`,
       answer: (
         <p>
           Because a single shared codebase means a single shared failure surface. Each of the{' '}

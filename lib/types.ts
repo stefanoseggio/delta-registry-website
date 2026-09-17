@@ -12,6 +12,7 @@ export type ActorDomain =
   | 'Securities & Financial Enforcement'
   | 'AI Crawler & Content Governance'
   | 'Digital Archives & Publishing'
+  | 'Financial Markets & Sovereign Debt'
 
 export interface PricingEvent {
   eventName: string

@@ -16,7 +16,8 @@ import type { Actor } from './types'
 // README pricing/BYOK disclosure section on 2026-09-16.
 //
 // `isPublic` was independently re-verified against the live Apify API (GET /v2/acts/{id}) for
-// every actor added in the 2026-09-16 pass; all 24 actors in this fleet are live and public.
+// every actor added in the 2026-09-16 and 2026-09-17 passes; all 28 actors in this fleet are
+// live and public.
 const SCHEDULE = 'Configurable — runs on your own Apify Scheduler (cron); no fixed operator cadence'
 
 export const ACTORS: Actor[] = [
@@ -427,6 +428,85 @@ export const ACTORS: Actor[] = [
     storeUrl: 'https://apify.com/stefano_seggio/regione-lombardia-grants-registry-monitor',
     githubUrl: 'https://github.com/stefanoseggio/regione-lombardia-grants-registry-monitor',
     byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
+  },
+
+  // --- Added 2026-09-17: 4 actors that brought the fleet from 24 to 28. Pricing (real
+  // pricingInfos.pricingPerEvent.actorChargeEvents pulled via `apify api get acts/{id}`),
+  // deltaEvents (real classification literals from each actor's own src/deltaEngine.ts), and
+  // byok (from each actor's own .actor/input_schema.json) — nothing here is invented.
+  {
+    slug: 'eu-ted-procurement-delta-monitor',
+    title: 'EU TED Procurement Monitor',
+    domain: 'Government Registers & Procurement',
+    category: 'BUSINESS',
+    jurisdiction: 'European Union (all 27 member states, via TED)',
+    dataSource: "TED (Tenders Electronic Daily) official public Search API — EU public procurement notices, contract awards, and CPV-coded tenders",
+    pricing: [
+      { eventName: 'new-notice', priceUsd: 0.02, unit: 'per new notice' },
+      { eventName: 'notice-updated', priceUsd: 0.01, unit: 'per updated notice' },
+    ],
+    deltaEvents: ['NEW_NOTICE', 'NOTICE_UPDATED'],
+    storeUrl: 'https://apify.com/stefano_seggio/eu-ted-procurement-delta-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/eu-ted-procurement-delta-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
+  },
+  {
+    slug: 'uk-modern-slavery-statement-registry-monitor',
+    title: 'UK Modern Slavery Statement Registry Monitor',
+    domain: 'Corporate Registries',
+    category: 'BUSINESS',
+    jurisdiction: 'United Kingdom',
+    dataSource: 'UK Modern Slavery Statement Registry (gov.uk) bulk CSV export — 34,000+ organisations, 23,500+ statements, Section 54 compliance-disclosure tracking',
+    pricing: [
+      { eventName: 'new-statement', priceUsd: 0.02, unit: 'per new statement' },
+      { eventName: 'statement-updated', priceUsd: 0.01, unit: 'per updated statement' },
+    ],
+    deltaEvents: ['NEW_STATEMENT', 'STATEMENT_UPDATED'],
+    storeUrl: 'https://apify.com/stefano_seggio/uk-modern-slavery-statement-registry-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/uk-modern-slavery-statement-registry-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
+  },
+  {
+    slug: 'emerging-market-sovereign-debt-auction-monitor',
+    title: 'Sovereign Debt Auction Monitor (Brazil)',
+    domain: 'Financial Markets & Sovereign Debt',
+    category: 'BUSINESS',
+    jurisdiction: 'Brazil (Tesouro Nacional)',
+    dataSource: "Tesouro Transparente open-data portal — Brazil National Treasury domestic bond auction results (LTN, LFT, NTN-B, NTN-F), marginal-rate and coverage-ratio tracking",
+    pricing: [
+      { eventName: 'new-auction', priceUsd: 0.02, unit: 'per new auction' },
+      { eventName: 'auction-result-revised', priceUsd: 0.01, unit: 'per revised auction result' },
+    ],
+    deltaEvents: ['NEW_AUCTION', 'AUCTION_RESULT_REVISED'],
+    storeUrl: 'https://apify.com/stefano_seggio/emerging-market-sovereign-debt-auction-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/emerging-market-sovereign-debt-auction-monitor',
+    byok: 'none',
+    updateFrequency: SCHEDULE,
+    isPublic: true,
+  },
+  {
+    slug: 'uae-corporate-registry-monitor',
+    title: 'UAE Corporate Registry Monitor',
+    domain: 'Corporate Registries',
+    category: 'BUSINESS',
+    jurisdiction: 'United Arab Emirates (Dubai Mainland, ADGM, DIFC)',
+    dataSource: 'Dubai Pulse (DED mainland trade-license register) + ADGM (Abu Dhabi Global Market) + DIFC public registers — bilingual Arabic/English entity-name normalization',
+    pricing: [
+      { eventName: 'new-entity', priceUsd: 0.02, unit: 'per new entity' },
+      { eventName: 'status-changed', priceUsd: 0.02, unit: 'per license/registration status change' },
+      { eventName: 'entity-updated', priceUsd: 0.01, unit: 'per other content update' },
+    ],
+    deltaEvents: ['NEW_ENTITY', 'STATUS_CHANGED', 'ENTITY_UPDATED'],
+    storeUrl: 'https://apify.com/stefano_seggio/uae-corporate-registry-monitor',
+    githubUrl: 'https://github.com/stefanoseggio/uae-corporate-registry-monitor',
+    byok: 'optional',
+    byokDetail: "Optional customer-supplied Dubai Pulse API key unlocks Dubai mainland (DED) trade-license coverage on top of the default ADGM + DIFC registers, which run with no key at all.",
     updateFrequency: SCHEDULE,
     isPublic: true,
   },
