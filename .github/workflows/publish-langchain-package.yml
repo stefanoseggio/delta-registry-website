@@ -103,33 +103,69 @@ jobs:
       run:
         working-directory: .
     steps:
-      - name: Poll PyPI's real JSON API until the new version is live
+      # A real HTTP 200 from this endpoint proves nothing on its own once the project already
+      # exists from a prior release — it means "some version is live", not "the version we just
+      # published is live". Reading the true expected version from pyproject.toml at this exact
+      # commit (rather than trusting the publish step's own success, or parsing the git ref) is
+      # what makes the assertion below meaningful instead of a no-op after the first release.
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            packages/langchain-delta-registry/pyproject.toml
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Determine the exact expected version from pyproject.toml
+        id: expected
+        run: |
+          VERSION=$(python3 -c "
+          import tomllib
+          with open('packages/langchain-delta-registry/pyproject.toml', 'rb') as f:
+              data = tomllib.load(f)
+          print(data['project']['version'])
+          ")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Expected version (from pyproject.toml at this commit): $VERSION"
+
+      - name: Poll PyPI's real JSON API until the EXPECTED version is live
+        env:
+          EXPECTED_VERSION: ${{ steps.expected.outputs.version }}
         run: |
           for attempt in $(seq 1 10); do
             STATUS=$(curl -s -o /tmp/pypi_response.json -w "%{http_code}" \
               "https://pypi.org/pypi/langchain-delta-registry/json")
             if [ "$STATUS" = "200" ]; then
               VERSION=$(python3 -c "import json; print(json.load(open('/tmp/pypi_response.json'))['info']['version'])")
-              echo "Live on PyPI: langchain-delta-registry $VERSION"
-              exit 0
+              if [ "$VERSION" = "$EXPECTED_VERSION" ]; then
+                echo "Live on PyPI: langchain-delta-registry $VERSION (matches expected $EXPECTED_VERSION)"
+                exit 0
+              fi
+              echo "Attempt $attempt: PyPI's latest is $VERSION, still waiting for $EXPECTED_VERSION (HTTP $STATUS), retrying in 15s..."
+            else
+              echo "Attempt $attempt: PyPI request failed (HTTP $STATUS), retrying in 15s..."
             fi
-            echo "Attempt $attempt: PyPI not yet showing the new release (HTTP $STATUS), waiting 15s..."
             sleep 15
           done
-          echo "::error::PyPI did not reflect the new release after 10 attempts (150s) — the publish step reported success but the package is not independently confirmed live. Investigate manually before considering this release complete."
+          echo "::error::PyPI never reflected the expected version $EXPECTED_VERSION after 10 attempts (150s) — the publish step reported success but this exact version is not independently confirmed live. Investigate manually before considering this release complete."
           exit 1
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install fresh from PyPI (not from the build artifact) and smoke-test
+      - name: Install the exact expected version fresh from PyPI (not from the build artifact) and smoke-test
+        env:
+          EXPECTED_VERSION: ${{ steps.expected.outputs.version }}
         run: |
-          python -m pip install langchain-delta-registry
+          python -m pip install "langchain-delta-registry==$EXPECTED_VERSION"
           python -c "
+          import importlib.metadata as md
+          import os
+          expected = os.environ['EXPECTED_VERSION']
+          installed = md.version('langchain-delta-registry')
+          assert installed == expected, f'expected {expected!r}, pip installed {installed!r}'
           from langchain_delta_registry import DELTA_REGISTRY_TOOLS
           assert len(DELTA_REGISTRY_TOOLS) == 28, f'expected 28, got {len(DELTA_REGISTRY_TOOLS)}'
           names = sorted(t.name for t in DELTA_REGISTRY_TOOLS)
-          print(f'Confirmed: {len(names)} tools installable fresh from PyPI.')
+          print(f'Confirmed: langchain-delta-registry {installed} installable fresh from PyPI, {len(names)} tools importable.')
           print('First 3:', names[:3])
           "
