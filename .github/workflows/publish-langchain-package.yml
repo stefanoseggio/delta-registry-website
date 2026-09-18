@@ -96,6 +96,12 @@ jobs:
     name: Confirm live on PyPI, independent of the publish step's own exit code
     needs: publish
     runs-on: ubuntu-latest
+    # Overrides the workflow-level `defaults.run.working-directory` (packages/langchain-delta-registry):
+    # this job has no checkout step and never touches repo files, so that directory doesn't exist on
+    # its runner — the inherited default made every shell step here fail with "No such file or directory".
+    defaults:
+      run:
+        working-directory: .
     steps:
       - name: Poll PyPI's real JSON API until the new version is live
         run: |
