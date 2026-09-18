@@ -339,3 +339,143 @@ curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.ste
 official tool's own live validator), contains zero embedded credentials, has zero drift against
 the real 28-actor fleet, and is one `login github` + `publish` command away from a live Official
 Registry listing — a real, verified, precisely-bounded gap, not an open-ended one.
+
+---
+
+## Glama & PulseMCP Multi-Registry Expansion Audit — appended 2026-09-18
+
+A follow-up sprint scoped to Glama and PulseMCP specifically. Both blocks' own briefs assumed an
+active ingestion pipeline exists on each platform that a manifest could be adapted for. Neither
+assumption survived a fresh, live check — re-verified rather than carried over from earlier in
+this session, since both facts are exactly the kind that can change and are cheap to re-check. One
+number in the brief ("32-tool capability payload = 28 fleet actors + 4 utility functions") **did**
+check out, verified for the first time here against the live Smithery tool list rather than left
+as an unconfirmed inference.
+
+### Verified first: the real 32-tool breakdown
+
+Expanded the full tool list on the live Smithery listing (`stefanoseggio28/delta-registry-mcp`,
+"Show 22 more…") rather than trust the earlier session's own hypothesis. **Confirmed exactly**:
+28 actor-specific tools (one per fleet actor, name-matched against all 28 real slugs) plus exactly
+4 generic, Apify-gateway-provided utility tools, each with a real, distinct capability — **Get
+Actor run** (read-only; run status, `summary`/`nextStep` fields), **Get dataset items** (read-only;
+dataset rows, `clean=true` option), **Get key-value store record** (read-only; single-record
+fetch), **Abort Actor run** (destructive, idempotent; stops a running/starting run). 28 + 4 = 32,
+exactly matching the live Overview page's own `Tools: 32` count. This breakdown is now a verified
+fact, not an inference — worth keeping precise, since "32 tools" without the real breakdown reads
+as unexplained inflation to anyone auditing the number.
+
+### Block 1 — Glama: re-confirmed not viable, with a new, concrete reason why
+
+Re-checked live (not assumed from the earlier session pass) whether Glama has added any
+remote-URL or `server.json`-based ingestion path since that check: it has not. Glama's own
+"Add Server" flow still requires an owned GitHub repository containing the MCP server's actual
+source plus a `glama.json` manifest committed to that repo. Glama's separate **Hosting** product
+(install the Glama GitHub App, connect a repo, Glama builds and deploys the server) is a different
+offering entirely — it makes Glama the *runtime*, not a way to register an externally-hosted
+endpoint like `mcp.apify.com`. Neither path accepts `public/mcp-server.json` (the Official
+Registry's format) as an input at all; there is no field-mapping or adaptation script that closes
+this gap, because the gap isn't a schema mismatch — it's a structural requirement (owned source
+code in an owned repo) that no script run inside `delta-registry-website` can satisfy.
+
+**A new, concrete finding this pass adds**: checked whether Delta Registry's actors are
+*already* discoverable on Glama some other way, rather than assuming the only path is a fresh
+submission. They are not — but Apify's own generic MCP server is: `glama.ai/mcp/servers/@apify/actors-mcp-server`
+is a real, live, **"Official"-badged** listing, showing the gateway's own **10 generic tools**
+(`search-actors`, `fetch-actor-details`, `call-actor`, `get-actor-run`, `get-dataset-items`,
+`get-key-value-store-record`, `abort-actor-run`, `search-apify-docs`, `fetch-apify-docs`,
+`report-problem`) — not Delta Registry's 28 actor-specific ones, which only exist behind a
+customer-specific `?tools=` query scope Glama's crawler has no way to see or attribute. A user
+searching Glama for e.g. "maritime sanctions monitor" will not find this fleet there, and no
+action available to Delta Registry today changes that — the listing that *does* exist is
+correctly attributed to Apify, since Apify genuinely operates that generic server.
+
+**What "formulate programmatic adaptation scripts" honestly resolves to**: nothing to build. A
+script is the right tool when a real endpoint exists and the blocker is a format/field mismatch.
+Here there is no endpoint to adapt toward. The only two real paths, both already evaluated and
+both correctly not taken, are: (a) fork `apify/apify-mcp-server` into an owned repo and list the
+fork — rejected in `MARKET_DOMINANCE_AND_REVENUE_POTENTIATION_ROADMAP.md`'s Correction #2, since it
+would misrepresent who wrote and operates the code, and would need indefinite upstream-sync
+maintenance for no functional gain; or (b) wait for Apify itself to add customer-attributed,
+per-scope listings to its own official Glama entry — entirely outside Delta Registry's control, not
+something to plan around as if it were scheduled.
+
+### Block 2 — PulseMCP: re-confirmed paused, with the exact live status text
+
+Fetched `pulsemcp.com/submit` live (not carried over from the earlier session pass): still not
+accepting submissions. Exact, current, quoted status: **"We are not accepting new MCP server or
+client submissions right now, and we are not making changes to existing listings."** The page
+itself now directs prospective submitters to the Official MCP Registry instead — reinforcing that
+completing the Official Registry submission (Block 3 of the prior append to this report, currently
+blocked only on the account owner's own `mcp-publisher login github`) is the highest-leverage
+single action available across every registry covered in this document, PulseMCP included, since
+PulseMCP's own docs describe partial auto-ingestion from that registry once its submissions
+reopen.
+
+**Same discoverability check run against PulseMCP as against Glama, same result**: Apify's generic
+server is already listed twice independently (`pulsemcp.com/servers/apify` — "Official Apify MCP
+Server" — and `pulsemcp.com/servers/apify-actor` — "Official Apify Actor MCP Server"), both
+describing the generic, dynamic-tool-discovery gateway, neither attributing or exposing Delta
+Registry's specific 28-actor, pay-per-event scope.
+
+**"Validate endpoint availability, Streamable HTTP transport compliance, and header-based security
+declarations"** — these are real, checkable properties, and they were already verified in this
+report's main body and its Official Registry append (live `/mcp-server.json` fetch, `streamable-http`
+transport confirmed correct and current per Apify's own docs, `Authorization` header declaration
+confirmed schema-valid with zero restriction at the protocol level). Nothing new to validate here
+specific to PulseMCP — its submission form is disabled while paused, so there is no PulseMCP-side
+schema to validate the payload against beyond what the Official Registry's schema (which PulseMCP
+partially re-ingests from) already covers.
+
+**Real, ready-to-submit content prepared now**, reusing the same verified metadata already used for
+Smithery and the Official Registry (a single, consistent source of truth across every channel,
+rather than independently-drifting copy per platform) — this is genuinely new prep work, not merely
+restating the blocked status, so that resubmission is a copy-paste action the moment PulseMCP
+reopens, not a fresh drafting exercise:
+
+| Field | Value |
+|---|---|
+| Server name | Delta Registry |
+| One-line description | 28 pay-per-event tools for regulatory, sanctions, procurement, and corporate-registry monitoring. |
+| Tool count | 32 (28 actor-specific + 4 generic Apify-gateway utility tools — see breakdown above) |
+| Transport | Streamable HTTP |
+| Endpoint | `https://mcp.apify.com?tools=stefano_seggio/actor-18-b2b-lead-magnet,...` (full URL: `public/mcp-server.json`'s `remotes[0].url`) |
+| Homepage | `https://delta-registry-website.vercel.app` |
+| GitHub repo | `https://github.com/stefanoseggio/delta-registry-website` |
+| Categories | Regulatory Compliance, Sanctions Screening, Government Procurement, Corporate Registries, Patent & IP, Pharma Safety, Securities Enforcement |
+
+### Block 3 — Multi-registry automation & adversarial audit
+
+**Pass 1 (credential-leak sweep, expanded scope)**: grepped every manifest/generator file touched
+across this entire multi-registry effort — `public/mcp-server.json`, `public/llms.txt`,
+`public/llms-full.txt`, `lib/aio-generator/`, `lib/schema-generator/` — for token/credential-shaped
+strings (`apify_api_...`, a real-looking `Bearer <token>`, a hardcoded `token=`/`key=` value with
+15+ alphanumeric characters). **Zero matches across all files.**
+
+**Pass 2 (slug-drift, three-way cross-check)**: the mandate specifically named `lib/actors.ts` as
+the drift-check target — previous passes in this report checked `lib/schema-generator/actor-registry.ts`
+against the manifest but not `lib/actors.ts` directly. Ran all three against each other
+programmatically: `lib/actors.ts` (28 slugs), `lib/schema-generator/actor-registry.ts` (28 slugs),
+`public/mcp-server.json`'s `remotes[0].url` (28 slugs) — **all three sets are byte-identical, zero
+drift in any direction.** This matters specifically because these three files are maintained by
+different mechanisms (`lib/actors.ts` is hand-maintained fleet data; `actor-registry.ts` and
+`mcp-server.json` are generator-derived) — a real drift between them would have been the kind of
+silent divergence this session has repeatedly caught and fixed elsewhere.
+
+**Pass 3 (definitive execution instructions, per-registry, honestly scoped to what's real today)**:
+
+| Registry | Status | Action available today |
+|---|---|---|
+| Official MCP Registry | Manifest valid (0 schema errors, official CLI's own `validate` passed live) | `mcp-publisher login github` then `mcp-publisher publish ./public/mcp-server.json` — exact commands and checksum verification in this report's prior section. Account owner's own OAuth required; not completed on their behalf. |
+| Smithery | **Live, SUCCESS**, 32/32 tools indexed, Quality Score 73/100 | None needed — already complete, verified live earlier this session. |
+| Glama | Not viable — no ingestion path exists for a remote, non-owned server | None available. Monitor only if Apify itself changes its own listing's scope in the future — not a Delta-Registry-side action. |
+| PulseMCP | Paused platform-wide, confirmed live this pass | None available now. Ready-to-submit content is prepared above; check `pulsemcp.com/submit` when convenient, or wait for the Official Registry entry to auto-propagate per PulseMCP's own stated ingestion design. |
+
+### Final status
+
+No code, manifest, or generator changes were made in this pass — the real finding across all three
+blocks is that `public/mcp-server.json` (already schema-valid, already credential-clean, already
+drift-free per this pass's own three-way cross-check) is the correct, sufficient artifact for
+every registry that can currently accept a submission, and the two that can't (Glama, PulseMCP)
+are blocked by real, external, platform-level constraints — not by anything fixable in this
+repository. Nothing here was left vague to appear more actionable than it is.
