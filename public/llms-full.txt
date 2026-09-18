@@ -1,0 +1,1187 @@
+# Delta Registry — Full Documentation
+
+Single-file reference for all 28 Delta Registry Actors: real input fields (pulled from each Actor's own generated OpenAPI schema, not hand-written), a runnable request example, and Store/GitHub links. Generated 2026-09-18 by lib/aio-generator/generate-aio-files.ts from lib/actors.ts and public/schemas/{slug}/openapi.json — never hand-maintained.
+
+Pricing model: pay-per-event (PPE) on every Actor. A record whose fingerprint matches the previous run is classified SNAPSHOT_NO_DIFF, is never re-delivered to the dataset, and is never billed — only NEW/STATUS_CHANGE/etc. events are charged, at the per-event price listed below.
+
+MCP: connect all 28 tools at once via `https://mcp.apify.com?tools=<comma-separated username/slug list>` (Streamable HTTP) — see /mcp-server.json for the complete, ready-to-use manifest.
+
+---
+
+## B2B Lead Enrichment Engine
+
+- **Slug**: `stefano_seggio/actor-18-b2b-lead-magnet`
+- **Domain**: B2B Data Enrichment
+- **Jurisdiction**: Global
+- **Data source**: OpenStreetMap Overpass API + customer seed list (no Google Maps)
+- **Store page**: https://apify.com/stefano_seggio/actor-18-b2b-lead-magnet
+- **Source**: https://github.com/stefanoseggio/actor-18-b2b-lead-magnet
+- **BYOK**: optional — Optional Hunter.io / People Data Labs key unlocks the enriched_lead tier — basic_lead needs no key.
+- **Delta events**: none (single-pass extractor, not a delta actor)
+
+**Pricing (per delivered event):**
+
+- `basic_lead`: $0.002 per lead
+- `enriched_lead`: $0.015 per lead
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `discoveryMode` | enum(seedList\|osmOverpass) | `"seedList"` | seedList (Mode A): enrich the company names/domains you supply directly - zero discovery-layer risk. osmOverpass (Mode B): discover candidate businesses from OpenStreetMap's Overpass API within a bounding box (ODbL-licensed - Google Maps is intentionally excluded from discovery because its Maps/Earth Additional ToS and Maps Platform ToS both prohibit building a business-listings/mailing-list database from Maps content). |
+| `seedList` | array | `[]` | Company names or website domains/URLs to enrich directly. Required (non-empty) when discoveryMode is "seedList". Mixed entries are fine - each is heuristically read as either a bare name ("Acme Corp") or a domain/URL ("acme.com", "https://acme.com"). |
+| `overpassBbox` | string | — | "south,west,north,east" in decimal degrees, e.g. "50.70,-1.90,50.90,-1.30". Required when discoveryMode is "osmOverpass". Queries the public overpass-api.de mirror, which is fair-use only - budget a self-hosted Overpass instance for production volume. |
+| `maxLeads` | integer | `50` | Hard cap on how many candidates are enriched and charged this run. |
+| `includeIntentScore` | boolean | `false` | When enabled, each lead gets one Claude Haiku 4.5 call scoring hiring-page, funding-news, and tech-stack signals read only from the business's own crawled site text (always paired with a mandatory disclaimer field - a heuristic read of public text, never a verified fact). Bills the enriched_lead PPE event ($0.015/record) instead of basic_lead ($0.002/record). Requires this Actor's own ANTHROPIC_API_KEY environment variable to be configured on the Actor - this is the operator's own compute cost (priced into the Enriched Lead rate), not a customer BYOK field. |
+| `hunterApiKey` | string | — | Your own Hunter.io API key. When supplied, this actor calls Hunter.io's domain-search endpoint using YOUR key - Hunter.io bills your own account directly, never this actor's own PPE price. |
+| `peopleDataLabsApiKey` | string | — | Your own People Data Labs API key, used and billed the same way as hunterApiKey - your own account is charged by People Data Labs directly. |
+| `skipKnownLeads` | boolean | `false` | When enabled, a lead already discovered (and charged for) in a prior run of this Actor is skipped before the enrichment waterfall runs - no repeat website crawl, no repeat BYOK/intent-score calls, and no repeat basic_lead/enriched_lead charge for the same business. Identity is a stable id derived from the OSM id (Mode B) or normalized name+domain (Mode A), persisted in this Actor's own key-value store across runs. Leave off (default) for a full re-enrichment on every run, e.g. if a business's own site content may have changed since last time. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~actor-18-b2b-lead-magnet/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/actor-18-b2b-lead-magnet/
+
+---
+
+## Maritime Sanctions Watchdog
+
+- **Slug**: `stefano_seggio/actor-19-maritime-sanctions-monitor`
+- **Domain**: Sanctions & Trade Compliance
+- **Jurisdiction**: Global (OFAC / UN)
+- **Data source**: OFAC SDN vessel list x UN Security Council Consolidated List (by IMO number)
+- **Store page**: https://apify.com/stefano_seggio/actor-19-maritime-sanctions-monitor
+- **Source**: https://github.com/stefanoseggio/actor-19-maritime-sanctions-monitor
+- **BYOK**: none
+- **Delta events**: NEW, STATUS_CHANGE, DELISTED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.0005 per record
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `maxItems` | integer | `250` | Hard cap on how many vessel-type SDN records to return this run, taken in the order OFAC lists them in the source feed. |
+| `onlyNew` | boolean | `false` | When enabled, persists a content fingerprint per vessel (uid) between runs in this actor's own key-value store and returns only records that are new since the last run OR whose sanctions program(s) or other tracked fields changed since they were last seen - records identical to last time are skipped. Vessels no longer present in the current OFAC feed are always reported as DELISTED regardless of this setting (when the run was not itself truncated by maxItems - see the DELISTED section of README.md). Recommended for recurring monitoring; leave off for a full extraction of the current vessel-type SDN list. |
+| `enrichWithUnConsolidatedList` | boolean | `true` | When enabled (default), additionally fetches the UN Security Council Consolidated Sanctions List and flags OFAC vessel records whose IMO number is also mentioned in a UN entity's designation text. Adds one extra live fetch and a linear scan of the UN list per run; disable for a faster OFAC-only run. |
+| `programFilter` | array | — | Optional: only return vessels whose Program list contains at least one of these OFAC program codes (case-insensitive substring match, e.g. "IRAN", "DPRK2", "RUSSIA-EO14024"). Leave empty to return vessels from all programs. |
+| `vesselNameContains` | string | — | Optional case-insensitive substring filter on the vessel's listed name, applied before maxItems. Useful for a narrow monitoring run against one vessel of interest. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~actor-19-maritime-sanctions-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/actor-19-maritime-sanctions-monitor/
+
+---
+
+## World Bank Procurement & Debarment Monitor
+
+- **Slug**: `stefano_seggio/actor-20-mdb-procurement-monitor`
+- **Domain**: Development Finance Procurement
+- **Jurisdiction**: Global (World Bank only — ADB / IDB excluded, see docs)
+- **Data source**: World Bank Procurement Notices API + "Other Sanctions" debarred-firms table
+- **Store page**: https://apify.com/stefano_seggio/actor-20-mdb-procurement-monitor
+- **Source**: https://github.com/stefanoseggio/actor-20-mdb-procurement-monitor
+- **BYOK**: none
+- **Delta events**: NEW, STATUS_CHANGE
+
+**Pricing (per delivered event):**
+
+- `result`: $0.001 per notice record
+- `result`: $0.003 per debarred-firm record
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `sources` | array | `["worldBankProcurementNotices","worldBankDebarredFirms"]` | worldBankProcurementNotices = the live World Bank Procurement Notices API (search.worldbank.org). worldBankDebarredFirms = the World Bank's static 'Other Sanctions' debarment sub-table (worldbank.org). ADB and IDB are NOT selectable here - both were live-researched and found gated/non-compliant for v1 (Cloudflare/WAF for ADB; Power BI embed + robots.txt-blocked API for IDB) - see README.md. |
+| `maxItemsPerSource` | integer | `100` | Hard cap on how many records to return per selected source this run. For worldBankProcurementNotices this bounds rows/os pagination against a live corpus of several hundred thousand notices; for worldBankDebarredFirms it is a no-op ceiling since the 'Other Sanctions' sub-table is a single small page. |
+| `onlyNew` | boolean | `false` | When enabled, persists a content fingerprint per Procurement Notice between runs (in this actor's own named key-value store) and returns only notices that are new since the last run OR whose notice_status or other tracked fields changed since they were last seen - notices identical to last time are skipped. is_new is always populated (true/false) regardless of this setting. Only applies to worldBankProcurementNotices - Other Sanctions has no delta-tracking concept (a small static snapshot page, not a dated/paginated feed). The World Bank Procurement Notices API documents no server-side 'since' filter, so pagination always walks from the start of the result set each run - onlyNew filters c... |
+| `countryFilter` | array | — | Optional client-side filter on project_ctry_name (e.g. 'Kenya', 'India'). The World Bank API documents no server-side country filter parameter, so this is applied after fetching each page. |
+| `noticeTypeFilter` | array | — | Optional client-side filter on notice_type (e.g. 'Invitation for Bids', 'Request for Expression of Interest', 'Contract Award'). Applied after fetching each page, same caveat as countryFilter. |
+| `dateRange` | enum(24h\|7d\|30d) | — | Optionally restrict procurement-notice results to records whose noticedate falls within this window. Not applied to worldBankDebarredFirms records (that source has no reliable per-record publish date field in the static sub-table). |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~actor-20-mdb-procurement-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/actor-20-mdb-procurement-monitor/
+
+---
+
+## Patent & IP Enforcement Monitor
+
+- **Slug**: `stefano_seggio/actor-21-patent-ip-enforcement-monitor`
+- **Domain**: Patent & IP Enforcement
+- **Jurisdiction**: US (USPTO, BYOK required) + optional EU (EPO, BYOK)
+- **Data source**: USPTO PTAB proceedings (IPR/PGR/CBM/Derivation) + optional EPO opposition data
+- **Store page**: https://apify.com/stefano_seggio/actor-21-patent-ip-enforcement-monitor
+- **Source**: https://github.com/stefanoseggio/actor-21-patent-ip-enforcement-monitor
+- **BYOK**: required — Requires a free USPTO Open Data Portal (ODP) API key for USPTO PTAB coverage — confirmed as a hard runtime requirement in the actor's own source, not optional as earlier documented. An additional, separately optional EPO opposition-data key unlocks EU coverage on top of that.
+- **Delta events**: NEW, TERMINATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.002 per record
+- `compute`: $0.25 per CU-hour
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `sources` | array | `["uspto_ptab"]` | uspto_ptab = real USPTO PTAB Trial proceedings (IPR/PGR/CBM/DER), newest-filed-first, via the USPTO Open Data Portal. epo_opposition = EPO Open Patent Services opposition-family legal-status watch for a caller-supplied list of EP publication numbers (epWatchlist). Both require the matching credential fields below (BYOK) -- see this actor's README/src/http.ts for the live-verified access requirements of each. |
+| `usptoOdpApiKey` | string | — | Required when sources includes uspto_ptab. Bring-your-own-key: obtain a free key from a USPTO.gov account (MFA required) at https://data.uspto.gov/myodp -- this actor never attempts to create that account on your behalf. Never logged or persisted beyond this run. |
+| `epoOpsConsumerKey` | string | — | Required when sources includes epo_opposition. From a free developers.epo.org account + registered App (OAuth2 client-credentials flow). Never logged or persisted beyond this run. |
+| `epoOpsConsumerSecret` | string | — | Paired with epoOpsConsumerKey. Never logged or persisted beyond this run. |
+| `epWatchlist` | array | `[]` | Required when sources includes epo_opposition -- EPO OPS has no bulk 'recent oppositions' search, only a per-publication-number legal-status lookup, so this actor is watchlist-driven for that source. Example: "EP3000000". |
+| `trialTypeCodes` | array | `[]` | Filters uspto_ptab results by trialMetaData.trialTypeCode. Leave empty for all four: Inter Partes Review (IPR), Post-Grant Review (PGR), Covered Business Method (CBM), Derivation (DER). |
+| `dateRange` | enum(24h\|7d\|30d\|90d) | — | Optionally restricts uspto_ptab results to proceedings whose petitionFilingDate falls within this window (applied server-side as an ODP rangeFilter). Does not affect epo_opposition, which is watchlist-driven. |
+| `maxItemsPerSource` | integer | `100` | Hard cap on how many records to return per selected source this run (applied independently to uspto_ptab and epo_opposition). |
+| `onlyNew` | boolean | `false` | When enabled, persists seen record ids and a status fingerprint between runs (in this actor's own key-value store) and skips records whose status is unchanged since the prior run. A first-seen record is emitted as event_type SANCTION; a previously-seen record whose status/decision fields changed is emitted as UPDATED; a uspto_ptab record whose terminationDate newly became set since it was last seen is emitted as the more specific TERMINATED instead. Recommended for recurring monitoring. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~actor-21-patent-ip-enforcement-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/actor-21-patent-ip-enforcement-monitor/
+
+---
+
+## Drug Safety & Recall Monitor
+
+- **Slug**: `stefano_seggio/actor-22-drug-safety-recalls-monitor`
+- **Domain**: Pharma Safety & Clinical Trials
+- **Jurisdiction**: US (FDA) + EU (EMA)
+- **Data source**: FDA openFDA drug enforcement API + EMA DHPC safety-alert feed
+- **Store page**: https://apify.com/stefano_seggio/actor-22-drug-safety-recalls-monitor
+- **Source**: https://github.com/stefanoseggio/actor-22-drug-safety-recalls-monitor
+- **BYOK**: none
+- **Delta events**: NEW
+
+**Pricing (per delivered event):**
+
+- `result`: $0.001 per delivered record
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `sources` | array | `["fda","ema"]` | FDA = US openFDA drug enforcement (recall) API. EMA = EU Direct Healthcare Professional Communications (DHPC) safety-alert JSON export. Both are independent regulator-native feeds with different fields, combined into one Unified Master Schema stream. |
+| `maxItemsPerSource` | integer | `100` | Hard cap on how many records to return per selected regulator this run, applied independently to FDA and EMA, both sorted newest-first. openFDA's own API caps a single request at 1000 results (verified live 2026-09-07); values above 1000 are paginated automatically via skip. |
+| `onlyNew` | boolean | `false` | When enabled, persists a content fingerprint per record between runs (in this actor's own named key-value store) and returns only records that are new since the last run OR whose status (FDA status / EMA regulatory_outcome) or other tracked fields changed since they were last seen - records that are byte-for-byte identical to last time are skipped. Recommended for recurring monitoring, so a status change on an already-known recall (e.g. Ongoing -> Terminated) is still surfaced, not silently suppressed just because the recall itself isn't brand new. Leave off for a full one-off extraction of every currently-visible record. |
+| `dateRange` | enum(24h\|7d\|30d) | — | Optionally restrict results to records whose own date field (FDA report_date; EMA dissemination_date) falls within this window. Independent of onlyNew. |
+| `fdaClassification` | array | — | Restrict FDA results to one or more FDA recall classification tiers (Class I = most severe / reasonable probability of serious harm or death, down to Class III = least severe). Ignored for EMA records, which use their own dhpc_type taxonomy instead (no equivalent tiering in the DHPC feed). |
+| `fdaApiKey` | string | — | Optional. Without a key, openFDA allows 240 requests/minute and 1,000 requests/day per IP address (verified live against https://open.fda.gov/apis/authentication/ on 2026-09-07). With a free key (open.fda.gov signup), the daily cap rises to 120,000 requests/day per key, same 240/minute. This actor's own request volume is trivially within the unauthenticated limit for normal use; the key is offered only for high-frequency scheduled runs. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~actor-22-drug-safety-recalls-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/actor-22-drug-safety-recalls-monitor/
+
+---
+
+## Clinical Trial Data Extractor
+
+- **Slug**: `stefano_seggio/actor-24-clinical-trials-delta-engine`
+- **Domain**: Pharma Safety & Clinical Trials
+- **Jurisdiction**: Global (ClinicalTrials.gov) + US (FDA Orange Book)
+- **Data source**: ClinicalTrials.gov API v2 + FDA Orange Book patent/exclusivity data
+- **Store page**: https://apify.com/stefano_seggio/actor-24-clinical-trials-delta-engine
+- **Source**: https://github.com/stefanoseggio/actor-24-clinical-trials-delta-engine
+- **BYOK**: none
+- **Delta events**: NEW_TRIAL, STATUS_CHANGE
+
+**Pricing (per delivered event):**
+
+- `result`: $0.002 per record
+- `actor-start`: $0.00005 per run start
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `sources` | array | `["clinicaltrials"]` | clinicaltrials = ClinicalTrials.gov API v2 trial-status delta tracking. orangebook = FDA Orange Book patent/exclusivity delta tracking. |
+| `condition` | string | — | Passed to ClinicalTrials.gov's query.cond parameter, e.g. 'diabetes'. Leave empty to walk all trials matching other filters (not recommended without a narrow maxPages). |
+| `orangeBookQuery` | string | — | Filter applied to the Orange Book query - an ingredient name or application number. |
+| `maxPages` | integer | `20` | Hard cap on the number of 100-record ClinicalTrials.gov API pages walked per run. |
+| `onlyChanged` | boolean | `false` | Returns only trials/products that are new or whose tracked fields (overall_status, patent/exclusivity data) changed since a previous run. State persists in a named key-value store unique to this actor across scheduled runs. |
+| `maxRetries` | integer | `5` | Maximum retry attempts (full-jitter exponential backoff) for a single page/extract fetch before it is dead-lettered. |
+| `fdaApiKey` | string | — | Optional. openFDA allows 1,000 requests/day without a key (240/min) or 120,000/day with a free key (still 240/min). Only matters for high-volume Orange Book runs - the ClinicalTrials.gov source does not use this key. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~actor-24-clinical-trials-delta-engine/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/actor-24-clinical-trials-delta-engine/
+
+---
+
+## Australian Government Grants Monitor
+
+- **Slug**: `stefano_seggio/australia-grantconnect-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: Australia
+- **Data source**: GrantConnect (grants.gov.au) — 360,000+ record register, no official API
+- **Store page**: https://apify.com/stefano_seggio/australia-grantconnect-monitor
+- **Source**: https://github.com/stefanoseggio/australia-grantconnect-monitor
+- **BYOK**: none
+- **Delta events**: NEW, UPDATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0 pay per result (see live Store pricing)
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `keyword` | string | — | Full-text search over grant title, purpose and activity (also accepts a GA ID such as GA578886). Matching mode below. |
+| `keywordMatch` | enum(AllWord\|AnyWord\|ExactPhrase) | `"AllWord"` | How the keyword(s) must match. |
+| `categories` | array | `[]` | GrantConnect's 29 top-level categories. Select several to get their union. The record's own 'category' field shows the finer sub-category label (e.g. 'Medical Research'). |
+| `agencyNameContains` | string | — | Case-insensitive substring match on the awarding agency, e.g. 'Health' or 'Infrastructure'. Applied client-side (GrantConnect's public form has no agency parameter), so combine it with a category, keyword or date window to keep the walk short. |
+| `recipientName` | string | — | Substring match on the recipient's legal name, e.g. 'Monash University' or 'Regional Express'. |
+| `recipientAbn` | string | — | Exact match on the recipient's 11-digit Australian Business Number (spaces optional). Returns every Commonwealth grant that entity has received. |
+| `minValueAud` | integer | — | Only awards worth at least this amount. Tip: 1000000 narrows the 360,000-record register to roughly 28,000. |
+| `maxValueAud` | integer | — | Only awards worth at most this amount. |
+| `goId` | string | — | All awards made under one Grant Opportunity (funding round), e.g. GO6105. |
+| `dateType` | enum(Publish Date\|Approval Date\|Start Date\|End Date\|Current\|Closed) | `"Publish Date"` | Which date the 'from'/'to' window applies to. 'Current' = grants running today and 'Closed' = grants whose term has ended (both ignore the window). |
+| `dateFrom` | string | — | Absolute (2026-07-01) or relative ('7 days', '3 months', '1 year' back from today, Canberra time). Leave empty for the whole archive (December 2017 onwards). |
+| `dateTo` | string | — | Absolute or relative upper bound of the window. Leave empty for 'today'. |
+| `oneOffAdHoc` | enum(any\|yes\|no) | `"any"` | Ad hoc grants (no competitive round) are the ones probity and integrity teams watch most closely. |
+| `aggregateGrantAward` | enum(any\|yes\|no) | `"any"` | Aggregate awards bundle several recipients into one record ('Multiple'). |
+| `eventTypes` | array | `["NEW_LISTING","AWARD_VARIATION","UPDATED"]` | NEW_LISTING = a brand-new award; AWARD_VARIATION = a variation/amendment record (value or term changed, e.g. GA270901-V1); UPDATED = an award you already received whose 'Last Updated' stamp moved (delta mode only). |
+| `onlyNew` | boolean | `false` | Remembers every award it has delivered (per filter set, in a named key-value store) and returns only awards that are new, varied or updated since. The walk stops as soon as it reaches already-known records, so a scheduled run costs a few pages instead of the whole register. |
+| `sortBy` | enum(Last Updated\|Publish Date\|Relevance) | `"Last Updated"` | 'Last updated' (recommended, and required for reliable monitoring): variations and corrections of old awards keep their original publish date, so only this order surfaces them. 'Relevance' needs a keyword. |
+| `deltaStateName` | string | — | Optional label for the memory of a monitoring task. Defaults to a fingerprint of your filters, so different schedules never interfere. Set the same name on two tasks to make them share one memory. |
+| `resetState` | boolean | `false` | Forget every previously delivered award for this delta state and re-baseline (the run then returns up to 'Max records' most recently updated awards). |
+| `maxItems` | integer | `100` | Hard cap on delivered records (and therefore on cost: you pay per record). In delta mode anything beyond the cap is simply delivered by the next run. |
+| `fetchDetail` | boolean | `true` | Opens each award's page (one extra request) for recipient ABN and location, delivery location, purpose, program, Grant Opportunity link, selection process, confidentiality flags and the agency contact. Off = listing-only summary records (cheaper 'result-summary' price). |
+| `maxConcurrency` | integer | `5` | How many award pages are fetched at once. GrantConnect tolerates 10 comfortably; 5 keeps a 500-record run under two minutes. |
+| `dateRange` | string | — | Kept for tasks created with version 1: '24h', '7d' or '30d' are interpreted as 'Date from'. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~australia-grantconnect-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/australia-grantconnect-monitor/
+
+---
+
+## Cordoba Government Tenders Monitor
+
+- **Slug**: `stefano_seggio/cordoba-compras-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: Province of Cordoba, Argentina
+- **Data source**: Province of Cordoba's official public-procurement portal
+- **Store page**: https://apify.com/stefano_seggio/cordoba-compras-monitor
+- **Source**: https://github.com/stefanoseggio/cordoba-compras-monitor
+- **BYOK**: none
+- **Delta events**: NEW, UPDATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0 pay per result (see live Store pricing)
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `maxItems` | integer | `200` | Hard cap on the number of active tenders (licitaciones) returned this run. The source only covers active/open tenders (Licitaciones) - awarded or historical tenders are out of scope for this actor. |
+| `onlyNew` | boolean | `false` | When enabled, persists which tender ids (nroCotizacion) this actor has already returned - and their last-known estado + content fingerprint - in its own named key-value store that survives between scheduled runs, and returns only tenders that are new, changed estado, amended, or closed since a prior run. IMPORTANT: this source's listing is NOT reliably sorted newest-first end to end (verified live - a real tender can appear out of order relative to both its own Fecha Inicio and its own nroCotizacion, within the very first page), so onlyNew filters AFTER a full fetch (up to maxItems) rather than stopping pagination early like this fleet's other delta-enabled actors. It is correct, just not... |
+| `eventTypes` | array | `["NEW_LISTING","STATUS_CHANGE","UPDATED","CLOSED"]` | Which kinds of change to deliver when 'Delta mode' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = seen before, estado changed - free to detect. UPDATED = seen before, same estado, a field changed (a prorroga granted, an amended item/budget). CLOSED = a previously-active tender is absent from this run's fetch - only computed when maxItems does not truncate the walk (a partial walk cannot prove absence). |
+| `dateRange` | enum(24h\|7d\|30d) | — | Optionally restrict results to tenders whose Fecha Inicio (publication date) falls within this window. Independent of onlyNew - this is the source's own declared publication timestamp, not independently cross-verified against when a tender actually first appeared on the portal. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~cordoba-compras-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/cordoba-compras-monitor/
+
+---
+
+## Chile Official Gazette Monitor
+
+- **Slug**: `stefano_seggio/diario-oficial-cl-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: Chile (national)
+- **Data source**: Diario Oficial de Chile — laws, decrees, resolutions
+- **Store page**: https://apify.com/stefano_seggio/diario-oficial-cl-monitor
+- **Source**: https://github.com/stefanoseggio/diario-oficial-cl-monitor
+- **BYOK**: none
+- **Delta events**: NEW_LISTING, UPDATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.003 per record
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `sections` | array | `["normas_generales"]` | Which sections of the edition to fetch. Not every section publishes content every day - a section with nothing that day returns 404 from the source and is skipped, not treated as an error. |
+| `maxItems` | integer | `300` | Hard cap on the number of publications returned this run, across all selected sections. |
+| `onlyNew` | boolean | `false` | Return only publications that are new or amended (a correction re-published under the same CVE) since a prior run today, tracked in a named key-value store scoped to this actor. Most useful re-running the same day's edition on a schedule to catch late additions/corrections. There is no CLOSED or status-change event in this domain - a published legal notice is never withdrawn or 'closed', it is a permanent public record. |
+| `eventTypes` | array | `["NEW_LISTING","UPDATED"]` | Which kinds of change to deliver when 'Only new records' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. UPDATED = same CVE (or identity), the content changed - a correction. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~diario-oficial-cl-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/diario-oficial-cl-monitor/
+
+---
+
+## Entre Rios Government Tenders Monitor
+
+- **Slug**: `stefano_seggio/entrerios-compras-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: Province of Entre Rios, Argentina
+- **Data source**: Unidad Central de Contrataciones — Province of Entre Rios
+- **Store page**: https://apify.com/stefano_seggio/entrerios-compras-monitor
+- **Source**: https://github.com/stefanoseggio/entrerios-compras-monitor
+- **BYOK**: none
+- **Delta events**: NEW, UPDATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0 pay per result (see live Store pricing)
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `estado` | enum(\|1\|2\|3\|4) | `""` | Filter by process status. Leave blank (default) to pull every status in one request - the site's own union of all 4, verified live to be far larger than any single status alone. |
+| `tipoLicitacion` | enum(\|1\|2\|3\|4) | `""` | Filter by contracting procedure type. Leave blank for all types. |
+| `organismo` | enum(\|1\|3\|4\|5\|6\|7\|8\|9) | `""` | Filter by issuing organism. Leave blank for all organisms. |
+| `anio` | string | `""` | Filter by year, e.g. "2025". Leave blank for all years (data goes back to at least 2004). |
+| `palabra` | string | `""` | Free-text keyword filter, matched server-side the same way the site's own "Palabra" search box works. |
+| `maxItems` | integer | `1000` | Hard cap on the number of tenders returned this run. The full unfiltered backlog is over 5000 rows (verified live) - narrow with the filters above or raise this cap to pull all of it. |
+| `onlyNew` | boolean | `false` | For recurring/scheduled runs: return only tenders that are new, changed estado, or closed since a prior run of this actor (tracked in a named key-value store scoped to this actor, so it survives between scheduled runs). This source is fetched as a single unfiltered POST covering the entire backlog rather than genuine, reliably newest-first pagination (verified live - see AGENTS.md), so enabling this does NOT reduce fetch time or request volume: the full backlog is still fetched every run either way, and this only changes which records get pushed to the dataset afterward. |
+| `eventTypes` | array | `["NEW_LISTING","STATUS_CHANGE","CLOSED"]` | Which kinds of change to deliver when 'Only new records' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = seen before, estado changed - free to detect, record_id's own hash excludes estado on purpose. CLOSED = a previously-seen record_id is absent from this run's fetch - only computed on an UNFILTERED run (no status/type/organism/year/keyword filter set), since a filtered run's fetch is a subset of the register, not the whole thing; skipped otherwise. |
+| `dateRange` | enum(\|24h\|7d\|30d) | `""` | Filters to a source's own natural per-record date field, where one of this portfolio's monitor actors has one. This source (Entre Rios' tender listing) publishes NO per-record date field anywhere - not on the listing, not on any detail page (there isn't one) - verified live against the real page (see AGENTS.md). Setting this has NO effect on the results returned; the actor logs a warning instead of silently applying a misleading filter. Present only for input-shape consistency with the rest of the portfolio. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~entrerios-compras-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/entrerios-compras-monitor/
+
+---
+
+## Florida State Procurement Monitor
+
+- **Slug**: `stefano_seggio/florida-tenders-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: Florida, United States
+- **Data source**: MyFloridaMarketPlace (MFMP VBS) — ITB/RFP/ITN/RFI/RSQ solicitations
+- **Store page**: https://apify.com/stefano_seggio/florida-tenders-monitor
+- **Source**: https://github.com/stefanoseggio/florida-tenders-monitor
+- **BYOK**: none
+- **Delta events**: NEW, AMENDED, CLOSED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.003 per full-detail record
+- `result-summary`: $0.001 per listing-only record
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `statuses` | array | `["OPEN"]` | Which advertisement statuses to walk. OPEN is small and cheap (2 pages). Add CLOSED to track awards and to receive STATUS_CHANGE events when an open solicitation closes (131 pages, fetched in parallel; only new or changed records cost anything). |
+| `types` | array | `[]` | The portal's 10 advertisement types. Select several to get their union. Agency Decision = intent-to-award / award notice (starts the 72-hour protest clock); Single Source = non-competitive purchase notice. |
+| `agencyIds` | array | `[]` | MFMP organization ids, e.g. 30000021 (FDOT), 30000023 (DCF), 30000029 (AHCA), 30000032 (DMS), 30000026 (DOH), 30000031 (FDLE), 30000018 (DOE), 30000011 (DEP), 30000015 (FDACS), 30000012 (DOC), 30000036 (FWC), 30000039 (DJJ), 30000034 (REV), 30000019 (FSDB), 30000030 (FDC), 30000020 (FDVA), 30000025 (DMA), 30000013 (DLA), 30000033 (DOAH). Every record carries its `organizationId`, so run once without this filter to discover the rest (the portal has no public agency list). |
+| `agencyNameContains` | string | — | Case-insensitive substring on the agency name or short name, e.g. 'Transportation' or 'AHCA'. Applied client-side after the listing is read (cheap - the listing is walked in full anyway). |
+| `titleContains` | string | — | Case-insensitive substring on the advertisement title, e.g. 'software' or 'construction'. |
+| `commodityCodes` | array | `[]` | Exact 8-digit UNSPSC codes, e.g. 83112200 (Enhanced telecommunications services), 43230000 (Software). Several codes = union. The portal matches exact codes only - a prefix such as '43' returns nothing. |
+| `adNumber` | string | — | One specific advertisement, e.g. 16672 or AD-16672 (the numeric part is used). |
+| `agencyAdNumberContains` | string | — | Substring on the agency's own reference, e.g. 'DOT-ITB-27' or 'RFP 2526'. |
+| `dateFrom` | string | — | Only advertisements first published on or after this UTC calendar day: absolute (2026-09-01) or relative ('7 days', '3 months' back from today). A one-day window (from = to) is pushed to the portal; wider windows are applied client-side on the listing. Note: amendments keep the original publish date - use delta mode to catch them. |
+| `dateTo` | string | — | Upper bound of the publish window (inclusive). Leave empty for 'today'. |
+| `openBefore` | string | — | Server-side: only advertisements whose open date is on or before this day (absolute or relative). Useful to skip solicitations that have not started accepting responses yet. |
+| `closesAfter` | string | — | Server-side: only advertisements whose close date is on or after this day (absolute, or relative such as '0 days' for 'still open today'). Great for 'give me only what I can still bid on'. |
+| `eventTypes` | array | `["NEW_LISTING","UPDATED","STATUS_CHANGE"]` | NEW_LISTING = an advertisement never delivered before; UPDATED = a known advertisement whose version counter rose (addendum, Q&A, close-date extension, new document); STATUS_CHANGE = a known advertisement whose status changed (e.g. OPEN -> CLOSED; only visible if that status is in 'Statuses'). |
+| `onlyNew` | boolean | `false` | Remembers every advertisement it has delivered (id, version, status - per filter set, in a named key-value store) and returns only what is new, amended or status-changed since. The portal has no timestamp sort, so every listing page is re-read on each run (cheap: OPEN is 2 pages, fetched in parallel); detail is fetched only for records that will be delivered. The first run is the baseline: with a small 'Max records' it delivers the most recently published advertisements and treats everything older as history. |
+| `deltaStateName` | string | — | Optional label for the memory of a monitoring task. Defaults to a fingerprint of your filters, so different schedules never interfere. Set the same name on two tasks to make them share one memory. |
+| `resetState` | boolean | `false` | Forget every previously delivered advertisement for this delta state and re-baseline (the run then returns up to 'Max records' of the most recently published advertisements). |
+| `maxItems` | integer | `100` | Hard cap on delivered records (and therefore on cost: you pay per record). Newest-published first; amendments and status changes to known records always come first. In delta mode anything beyond the cap stays unseen and is delivered by the next run. |
+| `fetchDetail` | boolean | `true` | One extra request per delivered record for the description (HTML + plain text), UNSPSC commodity codes, documents with download links, response contact, response due date, last-update timestamp, linked solicitation and indicator flags. Off = listing-only summary records (cheaper 'result-summary' price). |
+| `maxConcurrency` | integer | `5` | How many listing pages / detail requests are in flight at once. Detail pages tolerate 10; the listing endpoint starts returning HTTP 429 above about 8 in flight (the Actor backs off and retries), so keep 5 for large backfills. |
+| `dateRange` | string | — | Kept for tasks created with version 1: '24h', '7d' or '30d' are interpreted as 'Published from'. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~florida-tenders-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/florida-tenders-monitor/
+
+---
+
+## Mendoza Government Tenders Monitor
+
+- **Slug**: `stefano_seggio/mendoza-compras-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: Province of Mendoza, Argentina
+- **Data source**: COMPR.AR-based portal — Province of Mendoza
+- **Store page**: https://apify.com/stefano_seggio/mendoza-compras-monitor
+- **Source**: https://github.com/stefanoseggio/mendoza-compras-monitor
+- **BYOK**: none
+- **Delta events**: NEW, UPDATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0 pay per result (see live Store pricing)
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `maxItems` | integer | `20` | Hard cap on the number of RAW processes walked this run (10 per page, 25,000+ total at audit time). This is the same cap as before - onlyNew/dateRange are applied on top of this raw walk as post-filters, so the number of records actually returned can be lower than maxItems when either is active. This actor does not yet expose the advanced-search form's own filters (date range, organism, process type) as actor input; start small, raise gradually. Default kept low (20) because resolveSourceUrl's per-row postback (~1.5s each, see its own description) makes a 100-item blank run take several minutes end-to-end against this site's real latency - raise this for a real monitoring run. |
+| `onlyNew` | boolean | `false` | Persists which numeroProceso ids this actor has already returned - and their last-known estado + content fingerprint - in its own private key-value store that survives between scheduled runs, and keeps only the ones that are new, status-changed or amended. IMPORTANT for this source: comprar.mendoza.gov.ar's process listing is sorted by numero de proceso ascending (each organism's own sequential counter, cycling through years) - NOT by date and NOT newest-first. Verified live: a blank-form search's first page mixes processes from 2019 through 2026 rather than showing only the most recent ones. Because of this, onlyNew is a safe POST-FILTER (fetch up to maxItems raw processes exactly as a n... |
+| `eventTypes` | array | `["NEW_LISTING","STATUS_CHANGE","UPDATED"]` | Which kinds of change to deliver when 'Only new records' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = seen before, estado changed (e.g. Pendiente Analisis -> Adjudicado) - free to detect, no extra request. UPDATED = seen before, same estado, a field changed (monto, fecha, unidad ejecutora...). |
+| `resolveSourceUrl` | boolean | `true` | When enabled (default), resolves each delivered record's own permalink via one extra postback per row (~1.5s each - a real, measured cost, see AGENTS.md). Disable for a much faster run when you don't need a process-specific link: source_url falls back to the plain search page, and delivery is charged at the cheaper result-summary rate instead of result. See README 'How much does it cost'. |
+| `dateRange` | enum(24h\|7d\|30d) | — | Restricts the (raw, up-to-maxItems) results to processes whose own 'Fecha de apertura' (scheduled bid-opening date/time) falls within this window ending now. Independent of onlyNew. Note: Fecha de apertura is WHEN BIDS OPEN, not when the process was published on the portal - a currently-open tender is routinely dated in the future relative to when it first appeared, so this answers 'opens/opened in the last N', not 'listed in the last N'. A future-dated process never matches any window until its own opening date falls inside it. See README for detail. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~mendoza-compras-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/mendoza-compras-monitor/
+
+---
+
+## Buenos Aires Province Tenders Monitor
+
+- **Slug**: `stefano_seggio/pba-tenders-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: Buenos Aires Province, Argentina (PBA — not CABA, not national)
+- **Data source**: PBAC — official procurement portal of Buenos Aires Province
+- **Store page**: https://apify.com/stefano_seggio/pba-tenders-monitor
+- **Source**: https://github.com/stefanoseggio/pba-tenders-monitor
+- **BYOK**: none
+- **Delta events**: NEW, STATUS_CHANGE
+
+**Pricing (per delivered event):**
+
+- `result`: $0 pay per result (see live Store pricing)
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `views` | array | `["apertura_proxima","ultimos_30_dias","adjudicados"]` | Which PBAC grids to extract. Defaults to all three. |
+| `fetchFullDetail` | boolean | `false` | When enabled, simulates the postback for each process. Known limitation: this currently returns only a short status label, not the full Pliego document text - that content lives in a nested panel not yet mapped. Leave off until this is resolved; it adds cost with limited extra value today. |
+| `maxItems` | integer | `200` | Hard cap on the number of tender processes returned this run, across all selected views. |
+| `onlyNew` | boolean | `false` | For recurring/scheduled runs: return only tenders that are new, changed vistaOrigen/estado, amended or closed since a prior run of this actor (tracked in a named key-value store scoped to this actor). CLOSED (a tender no longer in any of the 3 grids) is only ever computed when 'Views to extract' covers all 3 default views - a narrower selection makes this run's fetch a subset of the site, so CLOSED is skipped (and logged) in that case. |
+| `eventTypes` | array | `["NEW_LISTING","STATUS_CHANGE","UPDATED","CLOSED"]` | Which kinds of change to deliver when 'Only new records' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = vistaOrigen or estado changed - e.g. a tender moving from upcoming to awarded. UPDATED = same vistaOrigen/estado, a field changed. CLOSED = no longer listed in any of the 3 grids (only computed on an unfiltered 'Views to extract'). |
+| `dateRange` | enum(24h\|7d\|30d) | — | Restricts results to tenders whose fechaApertura falls within this window ending now. Independent of onlyNew. Note: fechaApertura is WHEN BIDS OPEN, not when the tender was published - for the 'Upcoming openings' view specifically that date is routinely in the future, so this filter will not match those rows (see AGENTS.md/README). |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~pba-tenders-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/pba-tenders-monitor/
+
+---
+
+## Page Metadata Extractor (CleanMeta)
+
+- **Slug**: `stefano_seggio/page-metadata-extractor`
+- **Domain**: SEO & Data Pipelines
+- **Jurisdiction**: Global
+- **Data source**: Any target URL — title, description, canonical, Open Graph, H1, word count
+- **Store page**: https://apify.com/stefano_seggio/page-metadata-extractor
+- **Source**: https://github.com/stefanoseggio/primer-actor
+- **BYOK**: none
+- **Delta events**: none (single-pass extractor, not a delta actor)
+
+**Pricing (per delivered event):**
+
+- `result`: $0.0005 per result (never per wasted run)
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `startUrls` | array | — | URLs to start crawling from. At least one is required - the Actor charges an actor-start event just for running, so an empty list would bill the caller for zero output. |
+| `maxRequestsPerCrawl` | integer | `100` | Hard limit on how many pages this run will fetch, across start URLs, discovered same-site links and pagination. |
+| `paginationSelector` | string | — | Optional CSS selector for a next-page link, e.g. a[rel=next] or .pagination .next. When set, the crawler follows it up to Max pagination depth pages per start URL, on top of normal same-site link discovery. |
+| `maxPaginationDepth` | integer | `3` | Maximum number of paginated pages to follow per start URL when Pagination selector is set. Ignored otherwise. |
+| `onlyChanged` | boolean | `false` | When enabled, a page is still crawled (its links are still followed) but is only added to the dataset - and charged - if it's the first time this exact URL has been scraped, or its extracted metadata differs from the last time this Actor scraped it. Pages with unchanged metadata are skipped. Useful for scheduled re-runs where you only want to pay for what's new or different since the last run. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~page-metadata-extractor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/page-metadata-extractor/
+
+---
+
+## Salta Government Tenders Monitor
+
+- **Slug**: `stefano_seggio/salta-compras-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: Province of Salta, Argentina
+- **Data source**: Province of Salta's official public-procurement portal
+- **Store page**: https://apify.com/stefano_seggio/salta-compras-monitor
+- **Source**: https://github.com/stefanoseggio/salta-compras-monitor
+- **BYOK**: none
+- **Delta events**: NEW, UPDATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.003 per full-detail record
+- `result-summary`: $0.001 per listing-only record
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `fetchDetail` | boolean | `true` | When enabled (default), fetches each publication's detail page for the full field set (organismo gestor, costo pliego, lugar de entrega, when present) plus attached document links. Disable for a faster, listing-only run. |
+| `maxItems` | integer | `100` | Hard cap on the number of publications returned this run. The portal serves ~250 currently-open (vigentes) publications at a time, 5 per page. |
+| `onlyNew` | boolean | `false` | Delta mode for daily/recurring monitoring: returns only publications that are new, changed (a fingerprinted amendment - a new monto, document, date...) or closed since a previous run. Seen ids are persisted across runs in a named key-value store unique to this actor ("salta-compras-monitor-delta-state"), not the run's own default store (which is isolated per run and would not survive between scheduled runs). Every record still carries is_new, so a normal (onlyNew=false) run also tells you which of its results are new. Pagination is NOT stopped early once already-seen records are reached: this actor's listing is sorted by Fecha/Hora Apertura (the bid-opening deadline), not by when a public... |
+| `eventTypes` | array | `["NEW_LISTING","UPDATED","CLOSED"]` | Which kinds of change to deliver when 'Only new' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. UPDATED = seen before, a field changed (fingerprinted). CLOSED = a previously-seen publication is absent from a complete walk this run - no longer vigente. CLOSED detection only runs when maxItems does not truncate the walk (a partial walk cannot prove absence) - see AGENTS.md. |
+| `dateRange` | enum(24h\|7d\|30d) | — | Filters results to publications whose own Fecha/Hora Apertura (bid-opening deadline - the only date field this source exposes anywhere, listing or detail; there is no separate publication date) falls within the given window. For the "vigentes" (currently open) publications this actor covers, that date is almost always in the FUTURE relative to when this actor runs, so this is an upcoming-deadline filter ("opens within the next 24h/7d/30d"), not a "published in the last N" filter. Independent of onlyNew. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~salta-compras-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/salta-compras-monitor/
+
+---
+
+## Santa Fe Government Tenders Monitor
+
+- **Slug**: `stefano_seggio/santafe-compras-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: Province of Santa Fe, Argentina
+- **Data source**: Province of Santa Fe portal — ministries and hospitals
+- **Store page**: https://apify.com/stefano_seggio/santafe-compras-monitor
+- **Source**: https://github.com/stefanoseggio/santafe-compras-monitor
+- **BYOK**: none
+- **Delta events**: NEW, STATUS_CHANGE, AMENDED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.003 per full-detail record
+- `result-summary`: $0.001 per listing-only record
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `estados` | array | `["AP"]` | Which lists to read. AP = Para Apertura (published, offers not yet opened - where every new tender appears first), ET = En Trámite (opened, being evaluated - actas and preadjudicación land here), CO = Concluida (finished). Each is a separate server-side query. |
+| `anio` | integer | — | Year of the process number (anioGestion). The site's own UI always applies the current year; leave empty for all years (2000 onwards). |
+| `objeto` | string | — | Case-insensitive phrase search over the tender subject, e.g. 'limpieza', 'medicamentos', 'servicio de vigilancia'. Word order matters ('servicio de limpieza' matches, 'limpieza servicio' does not). |
+| `tipoGestion` | array | `[]` | One server-side query per selected type. Codes are the site's own (L = Licitación Pública, P = Licitación Privada, T = Contratación Directa, ...). |
+| `tipoModalidad` | enum(1\|2\|3\|4\|5\|6\|7\|9999) | — | Contracting modality code from the site. |
+| `comprador` | string | — | The organism running the procedure, as its site id (idOrganismoLey12510, e.g. 27) or a distinctive part of its name (e.g. 'Administración Provincial de Impuestos', 'Hospital Cullen'). Names are matched against the site's own organism list at run start; an ambiguous name fails with the candidates listed. |
+| `solicitante` | string | — | The organism the purchase is for, same id space and name matching as 'Buyer' (e.g. 'Ministerio de Salud'). |
+| `rubro` | string | — | Product/service category, as the site's idEspecie (e.g. 29) or part of its name (e.g. 'medicinales', 'limpieza', 'alimentos'). Matched against the site's 78 rubros at run start. |
+| `subrubro` | string | — | Sub-category within the selected rubro, as idFamilia or part of its name. Requires 'Category (rubro)'. |
+| `nroGestion` | string | — | Exact process number as printed on the site, e.g. '18' or '02' (combine with the year: several organisms share the same numbering). |
+| `nroExpediente` | string | — | Exact, full expediente number, e.g. 'EE-2026-00001797-APPSF-OD' (partial values match nothing on the site). |
+| `openingFrom` | string | — | Only tenders whose bid opening (fecha de apertura) is on or after this date. Absolute (2026-09-01) or relative: '7 days' counts back from today, '+7 days' counts forward (Santa Fe calendar). Applied client-side after fetching the listing (the site has no date filter) - rows outside the window are simply skipped and not remembered. |
+| `openingTo` | string | — | Only tenders opening on or before this date. Absolute or relative ('+30 days' = opening within the next month). Client-side. |
+| `eventTypes` | array | `["NEW_LISTING","STATUS_CHANGE","UPDATED"]` | NEW_LISTING = a process never delivered before; STATUS_CHANGE = a known process that moved to another estado (AP -> ET -> CO); UPDATED = a known open process whose detail page changed (a circular aclaratoria, an acta de apertura, a preadjudicación report, a new opening date...). The last two exist in delta mode only. |
+| `onlyNew` | boolean | `false` | Remembers every process it has delivered (per filter set, in a named key-value store) with the estado it was in and a fingerprint of its detail page, and returns only processes that are new, moved to another estado, or were amended since. Each estado list is walked newest-first and stops as soon as it reaches already-known records. |
+| `recheckWindowDays` | integer | `30` | Delta mode with detail: known processes whose opening date is within this many days in the past (or any time in the future) get their detail page re-read every run to detect amendments (UPDATED). The register shows no 'last modified' signal, so this re-read is the only way to see a new circular or acta. 0 disables it. Re-reads are not charged unless something changed. |
+| `sortBy` | enum(newest\|openingSoonest\|openingLatest\|mostViewed) | `"newest"` | 'newest' (idGestion descending = most recently created first) is required for delta mode. 'openingSoonest' / 'openingLatest' order by bid-opening date; 'mostViewed' by the site's own view counter (full runs only). |
+| `deltaStateName` | string | — | Optional label for the memory of a monitoring task. Defaults to a fingerprint of your filters, so different schedules never interfere. Set the same name on two tasks to make them share one memory. |
+| `resetState` | boolean | `false` | Forget every previously delivered process for this delta state and re-baseline (the run then returns up to 'Max records' newest processes). |
+| `maxItems` | integer | `100` | Hard cap on delivered records (and therefore on cost: you pay per record). In delta mode anything beyond the cap is simply delivered by the next run. |
+| `fetchDetail` | boolean | `true` | Opens each process page (one extra request) for the publication timestamp, budget (Monto Original), submission deadline, places, rubros, requesting organism, contact, expediente and the pliego / circular / acta / preadjudicación document links. Off = listing-only summary records (cheaper 'result-summary' price; no UPDATED detection and no status sweep). |
+| `maxConcurrency` | integer | `5` | How many process pages are fetched at once. The site answers a page in 0.1-0.3 s and tolerated 10 in parallel without throttling; 5 is a polite default. |
+| `dateRange` | string | — | Kept for tasks created with version 1: '24h', '7d' or '30d' are interpreted as an opening-date window of that many days before AND after today. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~santafe-compras-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/santafe-compras-monitor/
+
+---
+
+## Tucuman Government Tenders Monitor
+
+- **Slug**: `stefano_seggio/tucuman-compras-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: Province of Tucuman, Argentina
+- **Data source**: Province of Tucuman's official public-procurement portal
+- **Store page**: https://apify.com/stefano_seggio/tucuman-compras-monitor
+- **Source**: https://github.com/stefanoseggio/tucuman-compras-monitor
+- **BYOK**: none
+- **Delta events**: NEW, UPDATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.003 per result
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `estados` | array | `["1"]` | Which procurement states to fetch (estado_compra on the portal). 1 = upcoming opening, 2 = in adjudication, 3 = already awarded. |
+| `maxItems` | integer | `100` | Hard cap on the number of tenders returned this run, across all selected states. The portal lists only 5 tenders per page, so a high value across multiple states means many sequential requests - estado 2 alone has 3700+ historical records. Start small. |
+| `onlyNew` | boolean | `false` | Delta mode for recurring/scheduled monitoring: returns only tenders that are new, changed to a different estado_compra (a real lifecycle transition, e.g. upcoming -> awarded) or amended (a changed monto, renglon or date) since a previous run. Tracked cross-estado, per idCompra, in this actor's own named key-value store (tucuman-compras-monitor-delta-state), so it survives between scheduled runs - unlike the run's default key-value store, which is created fresh per run. Implemented as a POST-FILTER: this actor still fetches up to maxItems as usual and only then drops unchanged already-seen ids, rather than stopping pagination early once N pages come back with nothing new. Early-stop is NOT... |
+| `eventTypes` | array | `["NEW_LISTING","STATUS_CHANGE","UPDATED"]` | Which kinds of change to deliver when 'Only new' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = seen before under a different estado_compra (a real lifecycle transition). UPDATED = seen before, same estado, but a monto, renglon, date or other field changed. |
+| `dateRange` | enum(24h\|7d\|30d) | — | Filters results to tenders whose fechaAperturaSobres (bid-opening date - the only per-tender date this source publishes) falls within the last 24 hours / 7 days / 30 days. Independent of onlyNew - combine both for 'new to me AND recently opened'. Gotcha: for estado 1 (apertura proxima) this date is always in the FUTURE, since the opening has not happened yet, so it can never fall inside this backward-looking window - dateRange only has a real effect on estado 2/3 tenders, whose opening has already occurred. See README.md 'Delta mode'. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~tucuman-compras-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/tucuman-compras-monitor/
+
+---
+
+## UK HSE Enforcement Monitor
+
+- **Slug**: `stefano_seggio/uk-hse-enforcement-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: United Kingdom
+- **Data source**: UK Health & Safety Executive — convictions and enforcement notices
+- **Store page**: https://apify.com/stefano_seggio/uk-hse-enforcement-monitor
+- **Source**: https://github.com/stefanoseggio/uk-hse-enforcement-monitor
+- **BYOK**: none
+- **Delta events**: NEW, UPDATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.003 per detail-enriched record
+- `result-summary`: $0.001 per listing-only record
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `datasets` | array | `["convictions","notices"]` | Convictions = successful prosecutions (defendant, fine, costs, breaches, court, hearing date; HSE keeps 5 years). Notices = Improvement and Prohibition enforcement notices (recipient, type, served/compliance dates, result; HSE keeps 10 years). |
+| `nameContains` | string | — | Substring match on the defendant's (convictions) or recipient's (notices) name, e.g. 'Skanska' or 'Balfour Beatty'. The contractor-vetting filter. Quotes are treated as single-character wildcards. |
+| `descriptionContains` | string | — | Full-text substring over the case description (convictions) or notice summary (notices), e.g. 'asbestos', 'scaffold', 'silica'. |
+| `localAuthorityContains` | string | — | Local authority where the offence occurred, e.g. 'Bradford', 'Cardiff UA'. |
+| `mainActivityContains` | string | — | A numeric value matches the SIC 2007 code of the offence location; any other text matches the activity description ('ROOFING', 'MACHINING'). The site keeps the two in different columns, so a code never matches as text and vice versa. The code match is a CONTAINS match on the register: use a full 5-digit code for one class ('43910' = roofing) or a 4-digit group ('4391'); 2-3 digit values also match every code that merely contains those digits ('43' returns 14310, 24310, 46430 ...) - use the industry filter for broad selections. |
+| `region` | enum(\|1\|2\|3\|4\|5\|6\|7) | `""` | HSE's seven UK regions. |
+| `country` | enum(\|8\|9\|10\|11) | `""` | Country of the offence location. |
+| `industry` | enum(\|12\|13\|14\|15\|16) | `""` | HSE's five industry groups. |
+| `hseDivision` | enum(\|17\|18\|19\|20\|21\|22\|23\|24\|25\|26\|27) | `""` | HSE's operational division (finer than region). |
+| `dateFrom` | string | — | Offence date (convictions) / date the notice was served (notices). Absolute (2026-01-01) or relative ('30 days', '6 months', '1 year' back from today, UK calendar). Note: both dates lag publication on the register by weeks to years - for 'what is new on the register' use delta mode instead. |
+| `dateTo` | string | — | Absolute or relative upper bound of the same date. Leave empty for 'today'. |
+| `hseReference` | string | — | Everything about one party: the numeric HSE Reference shown on a defendant or recipient page (the same id is used on both registers), e.g. 4392330. |
+| `recordNumber` | string | — | Look up one record by its case number (convictions) or notice number (notices), e.g. 4883993 or 316005113. |
+| `defendantStatus` | enum(\|1980\|1972\|1981\|1974\|1976\|1978\|1977\|1973\|1975\|1979) | `""` | Legal form of the defendant. Convictions only. |
+| `resultingFromFatality` | enum(any\|yes\|no) | `"any"` | Only cases that resulted from the investigation of a (RIDDOR-reportable) fatality. Convictions only. |
+| `minTotalFineGbp` | integer | — | Only cases with a total fine of at least this amount. Tip: 100000 leaves about 50 of the 210 cases. |
+| `maxTotalFineGbp` | integer | — | Only cases with a total fine of at most this amount. |
+| `noticeTypes` | array | `[]` | HSE's nine notice-type codes (labels verified against the register, 2026-09-07). '03' is the ordinary Improvement Notice (22,000+); '01' and '02' are the rare Crown / FEPA variants. Select several to get their union. Notices only. |
+| `act` | enum(\|502\|517\|519\|518\|491\|512\|490\|481\|488\|504\|500\|513\|507\|479\|482\|515\|487\|505\|516\|501\|514\|499\|497\|489\|495\|478\|494\|511\|509\|521\|520\|483\|485\|486\|506\|503\|493\|492\|484\|496\|510\|508\|480) | `""` | Primary legislation of the breach. Notices only (labels are the register's own, some truncated by the site). |
+| `eventTypes` | array | `["SANCTION","NEW_LISTING","UPDATED"]` | SANCTION = a conviction not delivered before; NEW_LISTING = a notice not delivered before; UPDATED = a record you already received whose case/notice page changed (a notice complied with, a revised compliance date, a breach or hearing added) - delta mode only. Applied by the delta engine, not by the site: changing it later does not fork the delta memory. |
+| `onlyNew` | boolean | `false` | Remembers every record it has delivered (per filter set, in a named key-value store) and returns only records that are new or whose page changed since. Convictions (~210 records) are always walked in full; notices stop at the first two pages of already-known records, so a scheduled run costs a few pages. |
+| `recheckDays` | integer | `180` | In delta mode, known records that are still open (Improvement Notices with Result 'Ongoing', and every conviction) are re-read for this many days after they were first delivered (or after their register date, whichever is later) to detect UPDATED events - the register has no 'last updated' field, so this is the only way to see a notice being complied with or a hearing being added. 0 disables re-checks. Up to 2,000 records are re-checked per run. |
+| `deltaStateName` | string | — | Optional label for the memory of a monitoring task. Defaults to a fingerprint of your filters, so different schedules never interfere. Set the same name on two tasks to make them share one memory. |
+| `resetState` | boolean | `false` | Forget every previously delivered record for this delta state and re-baseline (the run then returns up to 'Max records per register' most recently entered records). |
+| `maxItemsPerDataset` | integer | `100` | Hard cap on delivered records per selected register (and therefore on cost: you pay per record). On the very first delta run the cap defines the baseline: the oldest record that run delivers is remembered per register, and records entered before it are history - later delta runs never deliver or charge for them, whatever the cap (run once with onlyNew=false, or set a high cap on the first run, if you want the history). On every later delta run the overflow is a backlog: the walk remembers where it stopped (a per-register watermark in the delta memory) and the next run walks down to that point instead of stopping at the records already delivered. |
+| `fetchDetail` | boolean | `true` | Opens each record's own page for the description, dates, fine and costs, result, address, industry and HSE admin fields (plus, for convictions, the per-case breach list). Off = listing-row-only records (name, date, local authority, main activity, notice type) at the cheaper 'result-summary' price; no UPDATED detection is possible without it. |
+| `fetchBreachDetail` | boolean | `true` | Convictions: opens each breach's page for the court, Act section / Regulation paragraph, hearing date, result and per-breach fine. Notices: fetches the breach list (Act / regulation / paragraph per breach). Off = the cheaper 'result-summary' price. |
+| `fetchPartyDetail` | boolean | `true` | Opens the party's page (registered address, Status such as 'Private Company' or 'Individual', HSE Reference) and its case and notice lists on both registers - the repeat-offender signal (3 extra requests per record, no extra charge). |
+| `maxConcurrency` | integer | `5` | Run-wide cap on simultaneous HTTP requests (listing, detail, breach and party pages together - never more than this in flight). The register is a classic-ASP site that answered 17 concurrent requests without throttling; 5 keeps a 100-record run around a minute. |
+| `dateRange` | string | — | Kept for tasks created with version 1: '24h', '7d' or '30d' are interpreted as 'Date from'. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~uk-hse-enforcement-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/uk-hse-enforcement-monitor/
+
+---
+
+## KIPRIS Patent & Trademark Monitor
+
+- **Slug**: `stefano_seggio/kipris-patent-trademark-status-monitor`
+- **Domain**: Patent & IP Enforcement
+- **Jurisdiction**: South Korea (KIPRIS Plus)
+- **Data source**: KIPRIS Plus Open API — Korean patent & utility-model filings by applicant or application number
+- **Store page**: https://apify.com/stefano_seggio/kipris-patent-trademark-status-monitor
+- **Source**: https://github.com/stefanoseggio/kipris-patent-trademark-status-monitor
+- **BYOK**: required — Requires your own KIPRIS Plus service key — a paid annual license billed directly by KIPRIS, never pooled or resold.
+- **Delta events**: NEW_APPLICATION, STATUS_CHANGE, UPDATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.02 per new filing or status change
+- `result-summary`: $0.008 per non-status field update
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `watchlistApplicants` | array | `[]` | Applicant (출원인) legal names, Korean or English, e.g. "한빛전자 주식회사" or "Hanbit Electronics Co., Ltd.". Matched against KIPRIS Plus's applicant-name search field. Known limitation: Korean legal-entity names have romanization/translation variants, so name matching can miss or double-count filings. |
+| `watchlistApplicationNumbers` | array | `[]` | Exact KIPO-format application numbers, e.g. "1020220114820". Tracks individual filings directly rather than an applicant's whole portfolio. |
+| `includePatents` | boolean | `true` | When true (default), patent (특허) filings are included in the watchlist walk. |
+| `includeUtilityModels` | boolean | `true` | When true (default), utility model (실용신안) filings are included in the watchlist walk, alongside patents. |
+| `onlyNew` | boolean | `false` | When enabled, persists seen records between runs and only emits NEW_APPLICATION/STATUS_CHANGE/UPDATED events for what actually changed. When disabled, every matched record is delivered every run as BASELINE_SNAPSHOT/SNAPSHOT_NO_DIFF (always free) - the recommended way to validate this Actor's output against your real watchlist before committing to paid events. |
+| `maxItemsPerWatchlistEntry` | integer | `100` | Hard cap on how many records KIPRIS Plus may return for a single watchlist entry in one run, applied independently per entry. |
+| `deltaStateName` | string | `"default"` | Names the Key-Value Store this watchlist's seen-record state is kept in. Run multiple independent watchlists without them sharing or overwriting each other's baseline by giving each a distinct name here. |
+| `resetState` | boolean | `false` | When true, clears this watchlist's stored seen-record state before running, so the next run re-baselines from scratch (every matched record becomes a fresh, uncharged BASELINE_SNAPSHOT again, subject to onlyNew). Use for testing or recovering a corrupted state store, not routine operation. |
+| `byoKiprisServiceKey` | string | — | KIPRIS Plus is a paid, registered product license (a flat annual fee, independently confirmed against the official KIPRIS Plus fee page - not free developer registration like USPTO/EPO). This Actor is deliberately bring-your-own-key: there is no operator-held shared key, by design, not as a stopgap - you hold your own KIPRIS Plus subscription and pay KIPRIS directly for API usage, which is what keeps this Actor's own per-event price low. Never logged or persisted beyond this run. Because this Actor's build could not obtain a paid key of its own, the exact field names in a successful KIPRIS Plus response were not independently verified against a real successful call - see README. |
+| `requestDelayMs` | integer | `500` | KIPRIS Plus's real per-key rate ceiling has not been independently confirmed - this default trades a slower walk for not trusting an unverified number, the same reasoning this operator's other actors use for an unconfirmed rate limit. |
+| `maxRetries` | integer | `4` | Retry attempts (exponential backoff with jitter) for a 429/5xx response or a network-level failure before a single KIPRIS Plus request is given up on as failed. |
+| `requestTimeoutSecs` | integer | `30` | Aborts a single KIPRIS Plus API request that takes longer than this, so one slow response never stalls the whole run. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~kipris-patent-trademark-status-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/kipris-patent-trademark-status-monitor/
+
+---
+
+## Singapore ACRA Registry Monitor
+
+- **Slug**: `stefano_seggio/singapore-acra-registry-monitor`
+- **Domain**: Corporate Registries
+- **Jurisdiction**: Singapore
+- **Data source**: data.gov.sg ACRA Collection 2 — full-field Singapore corporate register (~2.1M entities, UEN-indexed)
+- **Store page**: https://apify.com/stefano_seggio/singapore-acra-registry-monitor
+- **Source**: https://github.com/stefanoseggio/singapore-acra-registry-monitor
+- **BYOK**: optional — Optional customer-supplied ACRA Business Profile API key unlocks real-time watchlist refresh on top of the default Collection 2 dataset.
+- **Delta events**: NEW_LISTING, STATUS_CHANGE, UPDATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.03 per NEW_LISTING or STATUS_CHANGE record
+- `result-summary`: $0.01 per UPDATED record
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `shardSelection` | array | `["A"]` | ACRA's data.gov.sg register is split into 27 files by the entity name's first letter (A-Z, plus 'Others' for names starting with a digit/symbol). Select a subset to bound run time/cost, or leave all selected to monitor the full ~2.1M-entity register. |
+| `onlyNew` | boolean | `true` | When true (recommended, and the only free-of-charge default), only NEW_LISTING, STATUS_CHANGE, and UPDATED events are delivered - never a snapshot of unchanged or first-run-baseline entities. When false, every entity is delivered every run, including BASELINE_SNAPSHOT (first-run) and SNAPSHOT_NO_DIFF (unchanged) rows - useful for a full audit/export, but on a first run against all 27 shards this delivers roughly 2.1 million uncharged rows to your dataset. |
+| `eventTypes` | array | — | Restricts which of the three charged event types are delivered. Leave empty to deliver all three. Has no effect on BASELINE_SNAPSHOT/SNAPSHOT_NO_DIFF, which are controlled solely by 'onlyNew'. |
+| `ssicCodeFilter` | array | `[]` | Deliver only entities whose primary or secondary SSIC code starts with one of these prefixes - e.g. ["62"] for the whole Computer Programming/IT division (62011, 62020, 62090, ...), or ["62011"] for an exact code. Matching happens at delivery time only: every entity is still tracked internally regardless of this filter, so an entity that changes INTO your filtered SSIC range is correctly reported as UPDATED/STATUS_CHANGE the moment it does, not missed because it didn't match previously. Leave empty to deliver all industries. |
+| `entityStatusFilter` | array | `[]` | Deliver only entities whose CURRENT status exactly matches one of these (case-insensitive) - e.g. ["Struck Off", "In Liquidation - Compulsory Winding Up (Insolvency)"] to watch only distressed/exited entities. Real status strings observed in the live register (2026-09-11): "Live", "Live Company", "Struck Off", "Terminated", "Cancelled", "Cancelled (Non-Renewal)", "Ceased Registration", "Amalgamated", "Dissolved - Members Voluntary Winding Up", "Dissolved - Creditors Voluntary Winding Up", "Dissolved - Compulsory Winding Up (Insolvency)", "In Liquidation - Members voluntary winding up", "In Liquidation - Compulsory Winding Up (Insolvency)". This list is not guaranteed exhaustive - ACRA's o... |
+| `maxItems` | integer | `25` | Stops the run once this many records have been pushed (and charged, where applicable). Entities not yet reached when the limit is hit are simply re-evaluated fresh next run - nothing is lost or double-counted. Leave unset for no limit (a full-register run can deliver a large number of BASELINE_SNAPSHOT rows on its very first execution if onlyNew=false). |
+| `deltaStateName` | string | `"default"` | Names the persistent Key-Value Store this run's delta memory lives in. Use a distinct name per independent schedule/configuration if you run this Actor more than one way (e.g. one schedule per shard subset) so they don't share baseline progress. Leave as 'default' for a single schedule. |
+| `resetState` | boolean | `false` | When true, ignores all previously-remembered entities for the selected shards and re-baselines from scratch (every entity becomes a fresh, uncharged BASELINE_SNAPSHOT again). Use only to deliberately restart monitoring - this will suppress NEW_LISTING/STATUS_CHANGE/UPDATED detection for one run per affected shard. |
+| `watchlistUens` | array | `[]` | A bounded list of specific UENs to re-check via ACRA's own real-time Business Profile API (see 'ACRA Business Profile API key' below) in addition to the monthly bulk extract - use this for a small number of high-priority counterparties where a fresher-than-monthly check matters. Requires 'ACRA Business Profile API key' to be set. |
+| `acraBusinessProfileApiKey` | string | — | Required only when 'Watchlist UENs' is non-empty. Bring-your-own-key: obtain a paid subscription key from ACRA's own API Marketplace (Entity Information Query / EIQ product, launched 18 Nov 2025) - this Actor never attempts to create that subscription on your behalf. Never logged or persisted beyond this run. Note: the exact response schema for this API was not independently verified during this Actor's build (it sits behind the same subscriber wall as the key itself) - see AGENTS.md before relying on BYOK enrichment in production. |
+| `webhookUrl` | string | — | A Slack Incoming Webhook URL, or any HTTPS endpoint that accepts a JSON POST (e.g. a Make/n8n/Zapier catch-hook), to receive a formatted alert the moment a STATUS_CHANGE event is detected (the event type a compliance team actually escalates on). This is independent of, and does not replace, Apify's own platform-level webhook system, which you can configure separately in the Apify Console for the other event types. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~singapore-acra-registry-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/singapore-acra-registry-monitor/
+
+---
+
+## SEC Enforcement & Litigation Feed
+
+- **Slug**: `stefano_seggio/sec-enforcement-litigation-delta-feed`
+- **Domain**: Securities & Financial Enforcement
+- **Jurisdiction**: United States (SEC)
+- **Data source**: SEC.gov litigation-release & administrative-proceeding RSS feeds + EDGAR CIK resolution
+- **Store page**: https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed
+- **Source**: https://github.com/stefanoseggio/sec-enforcement-litigation-delta-feed
+- **BYOK**: none
+- **Delta events**: NEW_LISTING, UPDATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.05 per new enforcement release
+- `result-summary`: $0.02 per updated release
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `sources` | array | `["litigation_releases","administrative_proceedings"]` | Which of SEC.gov's own enforcement feeds to walk each run. 'Litigation Releases' are HTML pages under sec.gov/enforcement-litigation/litigation-releases/lr-NNNNN (RSS at .../litigation-releases/rss, live-verified). 'Administrative Proceedings' link directly to PDF orders under sec.gov/files/litigation/admin/YYYY/34-NNNNNN.pdf (RSS at .../administrative-proceedings/rss, live-verified) and require a separate PDF text-extraction pass. |
+| `onlyNew` | boolean | `true` | When true (default), only NEW_LISTING and content-changed (UPDATED) records are pushed as charged events. Set false to also push free, uncharged SNAPSHOT_NO_DIFF records for every release the walk touches. |
+| `maxItemsPerRun` | integer | `0` | Caps the number of charged (result/result-summary) events this run will push, independent of your Apify spending limit. 0 means no Actor-side cap. |
+| `enableCikLinking` | boolean | `true` | When true (default), each parsed respondent name is looked up against SEC's own EDGAR company database (browse-edgar company search) to attach a linked_edgar_cik. A match scoring below cikMatchConfidenceThreshold is left null rather than guessed. |
+| `cikMatchConfidenceThreshold` | number | `0.8` | Minimum name-match confidence (0-1) required before linked_edgar_cik is populated. Default 0.80 is deliberately conservative - a real respondent, 'Invesco Alpha Inc.', shares a name substring with the real, unrelated NYSE-listed Invesco Ltd, and a lower threshold would risk wrongly attaching a real public company's CIK to an unrelated enforcement action in your vendor-risk feed. |
+| `watchlistNames` | array | `[]` | Entity or individual names (case-insensitive substring match against parsed respondents) you specifically want flagged. A match sets is_watchlist_match: true. |
+| `userAgent` | string | `"DeltaRegistrySECMonitor/1.0 (+https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed)"` | SEC's own fair-access policy (sec.gov/os/webmaster-faq#developers) requires automated requests to sec.gov/data.sec.gov to declare a descriptive User-Agent identifying the requester, typically '<Your Company Name> <your-contact-email>'. Sent verbatim on every request. |
+| `requestDelayMs` | integer | `750` | A flat delay applied between every successful request to sec.gov/data.sec.gov, independent of retries - a deliberately conservative default since this Actor's endpoints were live-verified for shape and availability only, not load-tested against SEC's general fair-access ceiling. |
+| `maxRetries` | integer | `4` | Retry attempts for a 429/5xx response or a network-level failure before a request is treated as failed for this run. Exponential backoff (1000ms * 2^attempt, jittered, capped at 15s). |
+| `requestTimeoutSecs` | integer | `30` | AbortSignal timeout applied to every individual HTTP request (feed page, release page, PDF download, EDGAR lookup). |
+| `deltaStateName` | string | `"default"` | Names the Key-Value Store this schedule's seen-release state is kept in. Run two schedules - e.g. one full-coverage, one watchlist-only - without them draining each other's baseline by giving each a distinct name here. |
+| `resetState` | boolean | `false` | When true, clears this schedule's stored seen-release state before walking, so the next run re-baselines from scratch. Use for testing or recovering a corrupted state store, not routine operation. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~sec-enforcement-litigation-delta-feed/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/sec-enforcement-litigation-delta-feed/
+
+---
+
+## AI Crawler Permission Monitor
+
+- **Slug**: `stefano_seggio/ai-crawler-content-signal-permission-monitor`
+- **Domain**: AI Crawler & Content Governance
+- **Jurisdiction**: Global
+- **Data source**: robots.txt AI-crawler directives + Cloudflare Content-Signal header + llms.txt / llms-full.txt, any domain
+- **Store page**: https://apify.com/stefano_seggio/ai-crawler-content-signal-permission-monitor
+- **Source**: https://github.com/stefanoseggio/ai-crawler-content-signal-permission-monitor
+- **BYOK**: none
+- **Delta events**: ALLOWED, DISALLOWED, CHANGED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.015 per ALLOWED/DISALLOWED directive flip
+- `result-summary`: $0.006 per Content-Signal or llms.txt change
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `domains` | array | `[]` | Bare hostnames to monitor - no protocol, no path, no trailing slash. Example: "cloudflare.com", "openai.com". Each domain is checked at its own https://{domain}/robots.txt (and, if enabled, /llms.txt and /llms-full.txt). Mix your own domains with competitor/vendor domains freely - each gets fully independent delta state. |
+| `trackedBots` | array | `["GPTBot","ChatGPT-User","OAI-SearchBot","ClaudeBot","Claude-User","Claude-SearchBot","Google-Extended","Applebot-Extended","PerplexityBot","Perplexity-User","CCBot","Bytespider","Amazonbot","Meta-ExternalAgent","Meta-ExternalFetcher","Diffbot","cohere-ai","omgilibot"]` | The robots.txt User-agent tokens whose Allow/Disallow directives are watched for changes over time. Defaults to 18 currently-documented AI-crawler tokens spanning OpenAI, Anthropic, Google, Apple, Perplexity, Common Crawl, ByteDance, Amazon, Meta, Diffbot, and Cohere. Add a newly-published crawler token, or narrow this to one vendor family, by editing this list. |
+| `checkContentSignals` | boolean | `true` | Parses any "Content-Signal: search=..., ai-input=..., ai-train=..." line found in robots.txt (Cloudflare's proposed extension to the standard, formalized as the IETF draft draft-romm-aipref-contentsignals) and tracks all three category values for change over time. Turn this off only if you exclusively care about classic robots.txt Allow/Disallow directives. |
+| `checkLlmsTxt` | boolean | `true` | Fetches both well-known paths (llmstxt.org's proposed convention) and tracks presence/absence plus a content hash, so an added, removed, or edited llms.txt is reported as a CHANGED event. llms.txt is an informal community proposal, not a ratified standard - this Actor reports its presence and content as a signal, never as a compliance guarantee. |
+| `onlyNew` | boolean | `true` | When true (default), a repeat run of an already-baselined domain only delivers ALLOWED, DISALLOWED, and CHANGED events - the free NO_CHANGE row is suppressed when nothing differs. A domain's first-ever check always delivers a free BASELINE_SNAPSHOT regardless of this setting, since that is the point of adding a domain to the watchlist. Set to false to also see an explicit "nothing changed" row on every run. |
+| `maxDomainsPerRun` | integer | `200` | Hard cap on how many domains from the list are checked (and, where applicable, charged) in a single run. Domains beyond this cap are simply checked on the next run - nothing about their state is lost or marked as seen. |
+| `concurrency` | integer | `15` | Caps the total number of in-flight HTTP requests across the whole run. Each domain fans out to up to three independent resource fetches (robots.txt, llms.txt, llms-full.txt), so this bounds total concurrent load across every domain being checked, not per-domain concurrency. Raise cautiously - most of the wall-clock cost of a large watchlist run is waiting on slow or unresponsive third-party domains, not this Actor's own compute. |
+| `requestTimeoutSecs` | integer | `15` | Aborts a single robots.txt/llms.txt/llms-full.txt request that takes longer than this, so one slow or unresponsive domain never stalls the whole run. Applies per individual attempt, not per domain overall. |
+| `maxRetries` | integer | `4` | Retry attempts (exponential backoff with jitter, capped at 15 seconds between attempts) before a single request is given up on as failed. Applies only to retryable outcomes (429 and 5xx responses, or a request timeout) - any other non-2xx, non-404 response is treated as final immediately and does not consume retry budget. A 404 is never a failure: it is parsed as a valid "resource absent" signal. |
+| `deltaStateName` | string | `"default"` | Names this run's persistent delta-state store. Use a distinct name per independent schedule (for example "own-sites" versus "competitor-watchlist") so their baselines never cross-contaminate each other. |
+| `resetState` | boolean | `false` | Wipes all remembered state for every domain under this deltaStateName before the run starts, so every domain is re-baselined from scratch on this run (delivered as free BASELINE_SNAPSHOT records, subject to onlyNew's usual free-baseline behavior). |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~ai-crawler-content-signal-permission-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/ai-crawler-content-signal-permission-monitor/
+
+---
+
+## Aozora Bunko Public-Domain Feed
+
+- **Slug**: `stefano_seggio/aozora-bunko-public-domain-text-feed`
+- **Domain**: Digital Archives & Publishing
+- **Jurisdiction**: Japan (Aozora Bunko catalog)
+- **Data source**: Aozora Bunko's official catalog export — 19,502-row confirmed-public-domain Japanese literature index
+- **Store page**: https://apify.com/stefano_seggio/aozora-bunko-public-domain-text-feed
+- **Source**: https://github.com/stefanoseggio/aozora-bunko-public-domain-text-feed
+- **BYOK**: none
+- **Delta events**: NEW_TEXT, STATUS_CHANGE, REVISED_TEXT
+
+**Pricing (per delivered event):**
+
+- `result`: $0.05 per new full-text delivery
+- `result-summary`: $0.01 per metadata-only change or status change
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `onlyNew` | boolean | `true` | When true (default), only NEW_TEXT, REVISED_TEXT and STATUS_CHANGE rows are pushed, each as a charged PPE event. Set to false for a free baseline run: every catalog row that passes the public-domain filter is pushed once as an uncharged SNAPSHOT_NO_DIFF record. |
+| `resetState` | boolean | `false` | When true, clears this feed's stored seen-work state before this run, so the next run re-baselines from scratch (every catalog row becomes a fresh, uncharged SNAPSHOT_NO_DIFF again, subject to onlyNew). Use for testing or recovering a corrupted state store, not routine operation. |
+| `onlyConfirmedPublicDomain` | boolean | `true` | When true (default), keeps only catalog rows where Aozora's own work-copyright flag reads なし (no copyright - confirmed public domain). When false, also includes rows flagged あり (the author/estate granted free-use permission, but the work is NOT public domain). |
+| `includeFullText` | boolean | `false` | When true (default), NEW_TEXT/REVISED_TEXT events download the linked text ZIP, decode it from Shift_JIS, strip Aozora's ruby/annotation markup and legend preamble, and embed both plain_text and raw_text_with_markup - delivered as the higher-priced 'result' event. When false, or when a text file fails to download/decode, the same events are delivered as metadata-only 'result-summary' records instead. |
+| `authorIdAllowlist` | array | `[]` | Aozora 人物ID values (e.g. "001257") to restrict this feed to. Leave empty to monitor the entire catalog. |
+| `maxItemsPerRun` | integer | `20` | Caps the number of charged (result/result-summary) events this run will push, independent of your Apify spending limit. 0 means no Actor-side cap. |
+| `requestDelayMs` | integer | `500` | Aozora Bunko is a small, volunteer-run, non-commercial mirror with no published rate limit - this default trades a slower walk for not needing to trust an unconfirmed number, and for being a polite citizen of a small server, not only a cost control. |
+| `maxRetries` | integer | `5` | Retry attempts (exponential backoff with jitter) for a 429/5xx response or a network-level failure before a single catalog or text-ZIP fetch is given up on as failed. |
+| `requestTimeoutSecs` | integer | `30` | Aborts a single request to Aozora Bunko (catalog export or per-work text ZIP) that takes longer than this, so one slow response never stalls the whole run. |
+| `deltaStateName` | string | `"default"` | Names the Key-Value Store this feed's seen-work state is kept in. Run multiple independent schedules - e.g. filtered to different author allowlists - without them draining each other's baseline by giving each a distinct name here. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~aozora-bunko-public-domain-text-feed/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/aozora-bunko-public-domain-text-feed/
+
+---
+
+## Lombardy Grants & Tenders Monitor
+
+- **Slug**: `stefano_seggio/regione-lombardia-grants-registry-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: Lombardy, Italy
+- **Data source**: dati.lombardia.it Socrata SODA API — Anagrafica dei bandi regionali (~1,912 bandi)
+- **Store page**: https://apify.com/stefano_seggio/regione-lombardia-grants-registry-monitor
+- **Source**: https://github.com/stefanoseggio/regione-lombardia-grants-registry-monitor
+- **BYOK**: none
+- **Delta events**: NEW_LISTING, STATUS_CHANGE, UPDATED
+
+**Pricing (per delivered event):**
+
+- `result`: $0.02 per NEW_LISTING or STATUS_CHANGE record
+- `result-summary`: $0.008 per UPDATED record
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `onlyNew` | boolean | `true` | When true (default), only NEW_LISTING, STATUS_CHANGE and UPDATED events are delivered - never a BASELINE_SNAPSHOT or SNAPSHOT_NO_DIFF row. When false, every bando currently in scope is delivered every run, including the free first-run baseline and unchanged rows - useful to preview the full dataset before committing spend. |
+| `eventTypes` | array | `[]` | Restricts which of the three charged event types are delivered. Leave empty to deliver all three. Has no effect on BASELINE_SNAPSHOT/SNAPSHOT_NO_DIFF, which are controlled solely by onlyNew. |
+| `statusFilter` | array | `[]` | Deliver only bandi whose computed status (derived by this Actor from apertura_adesione/chiusura_adesione against the run's own clock - the source itself publishes no lifecycle-status column) is one of these. This is a delivery-time filter only - every bando is still tracked internally regardless, so one that transitions into or out of your filtered status is still correctly reported as STATUS_CHANGE the moment it does. Leave empty to deliver all statuses. |
+| `policyAreaFilter` | array | `[]` | Deliver only bandi classified into one of these policy areas by this Actor's own taxonomy mapper (built from the real, observed direzione_generale values in the live dataset - a free-text field with no controlled vocabulary in the source itself). Delivery-time only, same tracking guarantee as statusFilter. Leave empty for all areas. See README for the full taxonomy and its source mapping. |
+| `keyword` | string | `""` | Full-text search passed server-side as Socrata's own $q parameter, matched against every text column (titolo_bando, direzione_generale, ente, tipo_strumento). Example: "formazione" or "ICT". Leave empty to skip. |
+| `directorateFilter` | array | `[]` | Deliver only bandi whose direzione_generale case-insensitively contains one of these values. Free-text matching against whatever Regione Lombardia's own back office typed in, not a stable enum - real values observed live include "ISTRUZIONE, FORMAZIONE, LAVORO", "CULTURA", "ARIA SPA". Delivery-time only. Leave empty for all directorates. |
+| `maxItems` | integer | `20` | Stops the run once this many records have been pushed (and charged, where applicable). Records not yet reached when the limit is hit are simply re-evaluated fresh next run. Leave unset for no limit - the full register is only ~1,912 rows, so an unlimited run is inexpensive even on a full onlyNew:false baseline pass. |
+| `deltaStateName` | string | `"default"` | Names the persistent Key-Value Store this run's delta memory lives in. Use a distinct name per independent schedule/filter configuration so they don't share baseline progress. |
+| `resetState` | boolean | `false` | When true, ignores all previously-remembered bandi for this deltaStateName and re-baselines from scratch (every bando becomes a fresh, uncharged BASELINE_SNAPSHOT again, subject to onlyNew). |
+| `socrataAppToken` | string | — | An optional Socrata app token (free, self-service at dati.lombardia.it) sent as the X-App-Token header on every request. Unauthenticated requests share a per-IP throttle Socrata does not fully document publicly. Supplying your own token removes the shared-IP ceiling entirely. Never logged or persisted beyond this run. |
+| `requestTimeoutSecs` | integer | `30` | Aborts a single Socrata API request that takes longer than this, so one slow response never stalls the whole run. |
+| `maxRetries` | integer | `4` | Retry attempts (exponential backoff with jitter) before a single page fetch is given up on as failed. Applies only to retryable outcomes (429 and 5xx responses, or a request timeout) - any other non-2xx response is treated as final immediately. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~regione-lombardia-grants-registry-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/regione-lombardia-grants-registry-monitor/
+
+---
+
+## EU TED Procurement Monitor
+
+- **Slug**: `stefano_seggio/eu-ted-procurement-delta-monitor`
+- **Domain**: Government Registers & Procurement
+- **Jurisdiction**: European Union (all 27 member states, via TED)
+- **Data source**: TED (Tenders Electronic Daily) official public Search API — EU public procurement notices, contract awards, and CPV-coded tenders
+- **Store page**: https://apify.com/stefano_seggio/eu-ted-procurement-delta-monitor
+- **Source**: https://github.com/stefanoseggio/eu-ted-procurement-delta-monitor
+- **BYOK**: none
+- **Delta events**: NEW_NOTICE, NOTICE_UPDATED
+
+**Pricing (per delivered event):**
+
+- `new-notice`: $0.02 per new notice
+- `notice-updated`: $0.01 per updated notice
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `operationMode` | enum(INCREMENTAL\|VALIDATE_QUERY\|BACKFILL) | `"INCREMENTAL"` | INCREMENTAL (default): real production run using TED's pagination mode (fast, bounded by 'Max items'), against the default broad, live-verified query below - this default is intentionally a genuine data-fetching mode, not VALIDATE_QUERY, so that a default/unattended run (including Apify's own daily automated health-check) always exercises real functionality and produces real output rather than a no-op. VALIDATE_QUERY: sends your 'Expert search query' to TED's real, free checkQuerySyntax pre-flight and reports whether it is valid - no notices are fetched, nothing is pushed, nothing is charged; switch to this manually while drafting a new query. BACKFILL: a full historical pull using TED's ... |
+| `expertQuery` | string | `"publication-date >= today(-14) AND classification-cpv = 72*"` | TED's own 'expert search' query string - the exact same syntax and query text used on TED's public Expert Search page (https://ted.europa.eu/en/search/expert-search). This is the ONLY filtering mechanism TED's Search API exposes; there is no separate country/CPV/value input on this actor because there is no separate one on TED's own API - build and validate your query on the Expert Search page (or via this actor's VALIDATE_QUERY mode, which calls TED's own free checkQuerySyntax check), then paste the finished query string here. The default below uses TED's own genuine server-side relative-date function, `today([+-]N)` - recovered directly from TED's own query-validator error message and c... |
+| `fields` | array | `["notice-identifier","publication-number","publication-date","notice-title","buyer-name","organisation-name-buyer","organisation-country-buyer","classification-cpv","deadline-receipt-tender-date-lot","procedure-type","estimated-value-lot","estimated-value-cur-lot","result-value-lot","result-value-notice","result-value-cur-notice","winner-identifier","winner-country","winner-size","links"]` | Which TED notice fields to retrieve per result, using TED's own eForms field IDs. This curated list covers the fields a procurement-intelligence buyer actually tracks (identity, buyer, value, CPV classification, deadline, winner). TED's own API rejects an empty fields array outright, and this actor always tracks notices by 'notice-identifier' internally regardless of your selection here (it's automatically included in every real request even if left unchecked) - so at least one other field should stay selected for the output to carry any actual content. TED exposes several hundred additional fields (the full eForms Business Term taxonomy) not listed here for usability - see TED's Search A... |
+| `scope` | enum(LATEST\|ACTIVE\|ALL) | `"ALL"` | LATEST: only notices from the current OJ S release. ACTIVE: only currently-open notices. ALL (TED's own default, and this actor's default): every notice matching the query regardless of age or status. |
+| `onlyLatestVersions` | boolean | `false` | When true, corrigenda/amendments are collapsed to only the latest version of each notice. When false (TED's own default), every published version is returned as its own entry - recommended if you want to observe corrections as their own delta events. |
+| `limit` | integer | `50` | Notices requested per call to TED's Search API. TED's own hard cap is 250 per page (and page-size x field-count must stay under 10,000). Lower this if you request many fields at once. |
+| `maxItems` | integer | `50` | Stops the run once this many changed/new records have been pushed (and charged, where applicable) - this actor's own safety valve, independent of TED's own per-query caps (15,000 for INCREMENTAL's pagination mode; uncapped for BACKFILL's iteration mode). Records not yet reached when the limit is hit are simply re-evaluated fresh next run. Defaults to 50 so a default/test run completes in well under Apify's automated-test window. |
+| `deltaStateName` | string | `"default"` | Names the persistent Key-Value Store this run's delta memory (fingerprints, and for BACKFILL the ITERATION scroll token) lives in. Use a distinct name per independent schedule/query so they don't share baseline progress. Leave as 'default' for a single schedule. |
+| `resetState` | boolean | `false` | When true, ignores all previously-remembered notices for this deltaStateName and re-baselines from scratch (every notice becomes a fresh, uncharged BASELINE_SNAPSHOT again). Use only to deliberately restart monitoring. |
+| `onlyNew` | boolean | `true` | When true (recommended, and the only free-of-charge default), only NEW_NOTICE and NOTICE_UPDATED events are delivered - never a snapshot of an unchanged notice or a first-run baseline. When false, every matched notice is delivered every run, including BASELINE_SNAPSHOT (first run) and NOTICE_UNCHANGED rows - useful for a full audit/export, but delivers every matched notice uncharged on a first BACKFILL run rather than just the ones worth tracking. |
+| `webhookUrl` | string | — | A Slack Incoming Webhook URL, or any HTTPS endpoint that accepts a JSON POST (e.g. a Make/n8n/Zapier catch-hook), to receive a formatted alert the moment a notice's status-tier fields change (award value, winner identity, or procedure status) - the change class a procurement-BD or compliance team actually escalates on. Independent of, and does not replace, Apify's own platform-level webhook system configurable separately in the Apify Console. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~eu-ted-procurement-delta-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/eu-ted-procurement-delta-monitor/
+
+---
+
+## UK Modern Slavery Statement Registry Monitor
+
+- **Slug**: `stefano_seggio/uk-modern-slavery-statement-registry-monitor`
+- **Domain**: Corporate Registries
+- **Jurisdiction**: United Kingdom
+- **Data source**: UK Modern Slavery Statement Registry (gov.uk) bulk CSV export — 34,000+ organisations, 23,500+ statements, Section 54 compliance-disclosure tracking
+- **Store page**: https://apify.com/stefano_seggio/uk-modern-slavery-statement-registry-monitor
+- **Source**: https://github.com/stefanoseggio/uk-modern-slavery-statement-registry-monitor
+- **BYOK**: none
+- **Delta events**: NEW_STATEMENT, STATEMENT_UPDATED
+
+**Pricing (per delivered event):**
+
+- `new-statement`: $0.02 per new statement
+- `statement-updated`: $0.01 per updated statement
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `years` | array | `["2026"]` | Which registry years to check this run. The registry publishes one full CSV snapshot per year (2020-2027, confirmed live), each containing every statement submitted for that reporting year. Each run does a cheap HEAD request per selected year first and only downloads/parses a year's full file when its content-hash has actually changed since last run (see README/AGENTS.md) - so selecting more years costs little on unchanged runs, but the FIRST run against a newly-selected year always does a full baseline pass. Defaults to the current year only to keep a first/default run fast and bounded. |
+| `sectorFilter` | array | `[]` | Deliver only statements from organisations that self-declared this sector. Real values as published by the registry: 'Private' or 'Public'. Leave empty to deliver both. This is a client-side filter applied after parsing (the registry's bulk CSV has no server-side query/filter mechanism - see AGENTS.md section 0), so it does not reduce download size, only which normalized statements are delivered. |
+| `turnoverFilter` | array | `[]` | Deliver only statements from organisations that self-declared one of these turnover brackets - the exact real bracket strings used by the registry, confirmed live. Leave empty to deliver all brackets (including organisations that left this optional field blank). |
+| `onlyMissingDisclosures` | boolean | `false` | When true, delivers only statements that do NOT cover at least one of the six government-recommended topics (organisational structure, policies, risk assessment, due diligence, training, goals) - i.e. a genuine compliance gap, not just any statement. When false (default), delivers all statements matching the other filters regardless of disclosure completeness. |
+| `maxItems` | integer | `50` | Stops the run once this many changed/new statements have been pushed (and charged, where applicable) across all selected years - this actor's own safety valve. Statements not yet reached when the limit is hit are simply re-evaluated fresh next run. Defaults to 50 so a default/test run completes in well under Apify's automated-test window. |
+| `deltaStateName` | string | `"default"` | Names the persistent Key-Value Store this run's delta memory (per-statement fingerprints and per-year content-hash cache) lives in. Use a distinct name per independent schedule/filter configuration so they don't share baseline progress. Leave as 'default' for a single schedule. |
+| `resetState` | boolean | `false` | When true, ignores all previously-remembered statements and per-year content-hashes for this deltaStateName and re-baselines from scratch (every matched statement becomes a fresh, uncharged BASELINE_SNAPSHOT again, and every selected year is re-downloaded regardless of its content-hash). Use only to deliberately restart monitoring. |
+| `onlyNew` | boolean | `true` | When true (recommended, and the only free-of-charge default), only NEW_STATEMENT and STATEMENT_UPDATED events are delivered - never a snapshot of an unchanged statement or a first-run baseline. When false, every matched statement is delivered every run its year is processed, including BASELINE_SNAPSHOT (first run) and STATEMENT_UNCHANGED rows. |
+| `webhookUrl` | string | — | Any HTTPS endpoint that accepts a JSON POST (e.g. a Make/n8n/Zapier catch-hook, or your own service) - receives the full raw event payload with no channel-specific formatting. Independent of, and does not replace, Apify's own platform-level webhook system configurable separately in the Apify Console. |
+| `slackWebhookUrl` | string | — | A Slack Incoming Webhook URL created via a Slack App (Slack's own currently-supported method - see 'Slack Apps' in your workspace settings, then add the 'Incoming Webhooks' feature). Do NOT use the older 'legacy custom integrations' webhook - Slack itself is phasing that specific path out, though existing legacy URLs still deliver today. Receives a formatted Slack Block Kit message on a status-tier change (award-equivalent: a mandatory-disclosure or compliance-status change). |
+| `teamsWebhookUrl` | string | — | A Microsoft Teams 'Workflows' webhook URL (Teams' current, real mechanism as of 2026 - open a channel, 'Workflows', search the 'When a Teams webhook request is received' template). This is NOT the older Incoming Webhook 'Connector' - Microsoft fully retired Office 365 connectors in Teams in a May 2026 cutover, so a classic connector URL will not work. Receives a formatted Adaptive Card (the current Teams card format) on the same status-tier change trigger as the Slack webhook. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~uk-modern-slavery-statement-registry-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/uk-modern-slavery-statement-registry-monitor/
+
+---
+
+## Sovereign Debt Auction Monitor (Brazil)
+
+- **Slug**: `stefano_seggio/emerging-market-sovereign-debt-auction-monitor`
+- **Domain**: Financial Markets & Sovereign Debt
+- **Jurisdiction**: Brazil (Tesouro Nacional)
+- **Data source**: Tesouro Transparente open-data portal — Brazil National Treasury domestic bond auction results (LTN, LFT, NTN-B, NTN-F), marginal-rate and coverage-ratio tracking
+- **Store page**: https://apify.com/stefano_seggio/emerging-market-sovereign-debt-auction-monitor
+- **Source**: https://github.com/stefanoseggio/emerging-market-sovereign-debt-auction-monitor
+- **BYOK**: none
+- **Delta events**: NEW_AUCTION, AUCTION_RESULT_REVISED
+
+**Pricing (per delivered event):**
+
+- `new-auction`: $0.02 per new auction
+- `auction-result-revised`: $0.01 per revised auction result
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `years` | array | `["2026"]` | Which registry years of Brazil's National Treasury domestic auction results to check this run. The source publishes one full XLSX file per year (2000-2026 confirmed live at authoring time; 2027 is listed for when it becomes real). Each run fully downloads AND parses every selected year's file - this source has no HEAD/Range support and its ETag header was found to change on every request regardless of content (confirmed live), so there is no cheap way to skip an unchanged year at the file level; the per-record content fingerprint is what avoids re-billing unchanged auctions instead (see AGENTS.md section 1). Files are small (58-85 KB), so this is fast in practice. Defaults to the current ... |
+| `bondTypeFilter` | array | `[]` | Deliver only auctions for these bond types - the real, currently-issued instrument types confirmed live: LTN (zero-coupon, fixed rate), LFT (floating rate, Selic-indexed), NTN-B (inflation-linked, IPCA-indexed), NTN-F (fixed rate, semi-annual coupon). Leave empty to deliver all types. This is a client-side filter applied after parsing (the source's bulk file has no server-side query mechanism), so it does not reduce download size, only which normalized auctions are delivered. |
+| `auctionTypeFilter` | array | `[]` | Deliver only these auction types - the real, documented values from the source's own legend: Venda (Sale), Troca (Exchange), Compra (Purchase), Extra Compra (Extraordinary Purchase), Extra Venda (Extraordinary Sale). Leave empty to deliver all types. |
+| `yieldChangeThresholdBps` | integer | `10` | Fires a notification (webhook/Slack/Teams - does not affect what's pushed to the dataset, only what's flagged as a high-value alert) when a bond type + benchmark's accepted (marginal/cutoff) rate moves by at least this many basis points versus its own last observed value. A real NEW_AUCTION always alerts regardless of this threshold, since there is no 'previous value' to compare against. Set to 0 to alert on any nonzero rate change for an AUCTION_RESULT_REVISED event. |
+| `coverageRatioFloor` | number | `0.5` | Fires a notification when an auction's coverage ratio (Quantity Accepted / Quantity Tendered - NOT a true bid-to-cover ratio, since this source does not publish total market demand; see AGENTS.md section 3) falls at or below this fraction, signalling weak demand relative to the offered supply. Set to 0 to disable this specific alert. |
+| `maxItems` | integer | `50` | Stops the run once this many changed/new auction records have been pushed (and charged, where applicable) across all selected years - this actor's own safety valve. Records not yet reached when the limit is hit are simply re-evaluated fresh next run. Defaults to 50 so a default/test run completes in well under Apify's automated-test window. |
+| `deltaStateName` | string | `"default"` | Names the persistent Key-Value Store this run's delta memory (per-auction fingerprints, per-year baseline-completion flags, and per-instrument last-observed rate for threshold comparisons, tracked by bond type + auction type + maturity date) lives in. Use a distinct name per independent schedule/filter configuration. Leave as 'default' for a single schedule. |
+| `resetState` | boolean | `false` | When true, ignores all previously-remembered auctions, per-year baseline-completion flags, and per-instrument rate history for this deltaStateName and re-baselines from scratch. Use only to deliberately restart monitoring. |
+| `onlyNew` | boolean | `true` | When true (recommended, and the only free-of-charge default), only NEW_AUCTION and AUCTION_RESULT_REVISED events are delivered - never a snapshot of an unchanged auction or a first-run baseline. When false, every matched auction is delivered every run its year is processed, including BASELINE_SNAPSHOT (first run) and AUCTION_UNCHANGED rows. |
+| `webhookUrl` | string | — | Any HTTPS endpoint that accepts a JSON POST - receives the full raw event payload with no channel-specific formatting. Independent of Apify's own platform-level webhook system. |
+| `slackWebhookUrl` | string | — | A Slack Incoming Webhook URL created via a Slack App (Slack's current, supported method - not the older 'legacy custom integrations' path). Receives a formatted Slack Block Kit message highlighting the marginal-rate change and coverage ratio on a threshold breach. |
+| `teamsWebhookUrl` | string | — | A Microsoft Teams 'Workflows' webhook URL (the current mechanism as of 2026 - NOT the retired classic Incoming Webhook connector; see README). Receives a formatted Adaptive Card highlighting the same yield/coverage signal as the Slack alert. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~emerging-market-sovereign-debt-auction-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/emerging-market-sovereign-debt-auction-monitor/
+
+---
+
+## UAE Corporate Registry Monitor
+
+- **Slug**: `stefano_seggio/uae-corporate-registry-monitor`
+- **Domain**: Corporate Registries
+- **Jurisdiction**: United Arab Emirates (Dubai Mainland, ADGM, DIFC)
+- **Data source**: Dubai Pulse (DED mainland trade-license register) + ADGM (Abu Dhabi Global Market) + DIFC public registers — bilingual Arabic/English entity-name normalization
+- **Store page**: https://apify.com/stefano_seggio/uae-corporate-registry-monitor
+- **Source**: https://github.com/stefanoseggio/uae-corporate-registry-monitor
+- **BYOK**: optional — Optional customer-supplied Dubai Pulse API key unlocks Dubai mainland (DED) trade-license coverage on top of the default ADGM + DIFC registers, which run with no key at all.
+- **Delta events**: NEW_ENTITY, STATUS_CHANGED, ENTITY_UPDATED
+
+**Pricing (per delivered event):**
+
+- `new-entity`: $0.02 per new entity
+- `status-changed`: $0.02 per license/registration status change
+- `entity-updated`: $0.01 per other content update
+
+**Input fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `dataSources` | array | `["ADGM_FREEZONE","DIFC_FREEZONE"]` | Which live, independently-verified UAE corporate registries to check this run. ADGM_FREEZONE (Abu Dhabi Global Market) and DIFC_FREEZONE (Dubai International Financial Centre) are both real, live, anonymous, bulk-queryable public registers - no setup required. DUBAI_MAINLAND (Dubai's DED trade-license register via the Dubai Pulse open-data portal) additionally requires your own approved dubaiPulseApiKey below (see README 'Dubai mainland setup') - no bulk, anonymous, general-commerce mainland registry exists for Abu Dhabi, Sharjah, or the other emirates (confirmed by live investigation; see ARCHITECTURE.md section 0), so they are not offered here. |
+| `dubaiPulseApiKey` | string | — | Your own Dubai Pulse API key, obtained via Dubai Pulse's own 'Request Permission' approval flow (dubaipulse.gov.ae) - this can take up to 14 days and is not something this actor can provision on your behalf. Only needed if dataSources includes DUBAI_MAINLAND. Leave blank otherwise. |
+| `maxItems` | integer | `50` | Stops the run once this many changed/new entity records have been pushed (and charged, where applicable) across all selected data sources - this actor's own safety valve. Records not yet reached when the limit is hit are simply re-evaluated fresh next run. Defaults to 50 so a default/test run completes in well under Apify's automated-test window. |
+| `deltaStateName` | string | `"default"` | Names the persistent Key-Value Store this run's delta memory (per-entity fingerprints and per-data-source baseline-completion flags) lives in. Use a distinct name per independent schedule/configuration. Leave as 'default' for a single schedule. |
+| `resetState` | boolean | `false` | When true, ignores all previously-remembered entities and baseline-completion flags for this deltaStateName and re-baselines from scratch. Use only to deliberately restart monitoring. |
+| `onlyNew` | boolean | `true` | When true (recommended, and the only free-of-charge default), only NEW_ENTITY, STATUS_CHANGED, and ENTITY_UPDATED events are delivered - never a snapshot of an unchanged entity or a first-run baseline. When false, every matched entity is delivered every run its data source is processed, including BASELINE_SNAPSHOT (first run) and ENTITY_UNCHANGED rows. |
+| `webhookUrl` | string | — | Any HTTPS endpoint that accepts a JSON POST - receives the full raw event payload with no channel-specific formatting. Independent of Apify's own platform-level webhook system. |
+| `slackWebhookUrl` | string | — | A Slack Incoming Webhook URL created via a Slack App (Slack's current, supported method - not the older 'legacy custom integrations' path). Receives a formatted, bilingual Slack Block Kit message with a colored accent bar highlighting license status changes. |
+| `teamsWebhookUrl` | string | — | A Microsoft Teams 'Workflows' webhook URL (the current mechanism as of 2026 - NOT the retired classic Incoming Webhook connector; see README). Receives a formatted, bilingual Adaptive Card with a status-change visual accent. |
+
+**Example request** (`run-sync-get-dataset-items`, real endpoint shape, empty body uses every field's own default):
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/stefano_seggio~uae-corporate-registry-monitor/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Full AI-agent tool schemas (OpenAI, Anthropic, Gemini, OpenAPI, LangChain, LlamaIndex, CrewAI, AG2): https://delta-registry-website.vercel.app/schemas/uae-corporate-registry-monitor/
+
+---

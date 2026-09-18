@@ -1,0 +1,51 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.stefanoseggio/delta-registry",
+  "title": "Delta Registry — Regulatory & Compliance Monitoring (28 tools)",
+  "description": "28 pay-per-event regulatory, sanctions, procurement, and corporate-registry monitoring tools exposed via Apify's hosted MCP gateway. Delta-classified output so a repeat call never re-bills for an unchanged record.",
+  "websiteUrl": "https://delta-registry-website.vercel.app",
+  "repository": {
+    "url": "https://github.com/stefanoseggio/delta-registry-website",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.apify.com?tools=stefano_seggio/actor-18-b2b-lead-magnet,stefano_seggio/actor-19-maritime-sanctions-monitor,stefano_seggio/actor-20-mdb-procurement-monitor,stefano_seggio/actor-21-patent-ip-enforcement-monitor,stefano_seggio/actor-22-drug-safety-recalls-monitor,stefano_seggio/actor-24-clinical-trials-delta-engine,stefano_seggio/ai-crawler-content-signal-permission-monitor,stefano_seggio/aozora-bunko-public-domain-text-feed,stefano_seggio/australia-grantconnect-monitor,stefano_seggio/cordoba-compras-monitor,stefano_seggio/diario-oficial-cl-monitor,stefano_seggio/emerging-market-sovereign-debt-auction-monitor,stefano_seggio/entrerios-compras-monitor,stefano_seggio/eu-ted-procurement-delta-monitor,stefano_seggio/florida-tenders-monitor,stefano_seggio/kipris-patent-trademark-status-monitor,stefano_seggio/mendoza-compras-monitor,stefano_seggio/page-metadata-extractor,stefano_seggio/pba-tenders-monitor,stefano_seggio/regione-lombardia-grants-registry-monitor,stefano_seggio/salta-compras-monitor,stefano_seggio/santafe-compras-monitor,stefano_seggio/sec-enforcement-litigation-delta-feed,stefano_seggio/singapore-acra-registry-monitor,stefano_seggio/tucuman-compras-monitor,stefano_seggio/uae-corporate-registry-monitor,stefano_seggio/uk-hse-enforcement-monitor,stefano_seggio/uk-modern-slavery-statement-registry-monitor",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer <your Apify API token> — required by Apify's MCP gateway, not issued or brokered by Delta Registry.",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "com.deltaregistry": {
+        "toolCount": 28,
+        "domains": [
+          "B2B Data Enrichment",
+          "Sanctions & Trade Compliance",
+          "Development Finance Procurement",
+          "Patent & IP Enforcement",
+          "Pharma Safety & Clinical Trials",
+          "Government Registers & Procurement",
+          "SEO & Data Pipelines",
+          "Corporate Registries",
+          "Securities & Financial Enforcement",
+          "AI Crawler & Content Governance",
+          "Digital Archives & Publishing",
+          "Financial Markets & Sovereign Debt"
+        ],
+        "pricingModel": "pay-per-event",
+        "operatedBy": "apify-hosted-mcp-gateway",
+        "transport": "streamable-http",
+        "note": "This entry describes Delta Registry's tool scope on Apify's shared, hosted MCP server (mcp.apify.com) — not a server Delta Registry independently operates. The MCP protocol implementation is Apify's; the tools, data, and pricing are Delta Registry's."
+      }
+    }
+  }
+}

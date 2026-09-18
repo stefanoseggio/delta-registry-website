@@ -1,0 +1,81 @@
+# Delta Registry
+
+> Pay-per-event regulatory, sanctions, procurement, and corporate-registry monitoring across 28 independently deployed Apify Actors, spanning 12 domains. Delta-classified output — a record unchanged since the last run is never re-delivered and never billed.
+
+Every Actor bills strictly per delivered event: no subscriptions, no seat licenses, no minimum spend. Full pricing, delta-engine methodology, and BYOK disclosure live on the homepage.
+
+## Core Resources
+
+- [Homepage](https://delta-registry-website.vercel.app): Fleet overview, live pricing, integration workbench, delta-engine documentation.
+- [MCP server manifest](https://delta-registry-website.vercel.app/mcp-server.json): server.json for connecting all 28 tools over MCP via Apify's hosted gateway (`https://mcp.apify.com?tools=...`, Streamable HTTP).
+- [AI-agent tool schema manifest](https://delta-registry-website.vercel.app/schemas/index.json): every Actor's OpenAI/Anthropic/Gemini/OpenAPI/LangChain/LlamaIndex/CrewAI/AG2 tool definitions.
+- [Full documentation (llms-full.txt)](https://delta-registry-website.vercel.app/llms-full.txt): every Actor's input fields, defaults, and a runnable request example, in one file.
+
+## B2B Data Enrichment
+
+- [B2B Lead Enrichment Engine](https://apify.com/stefano_seggio/actor-18-b2b-lead-magnet): Global. OpenStreetMap Overpass API + customer seed list (no Google Maps). $0.002 per lead. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/actor-18-b2b-lead-magnet/
+
+## Sanctions & Trade Compliance
+
+- [Maritime Sanctions Watchdog](https://apify.com/stefano_seggio/actor-19-maritime-sanctions-monitor): Global (OFAC / UN). OFAC SDN vessel list x UN Security Council Consolidated List (by IMO number). $0.0005 per record. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/actor-19-maritime-sanctions-monitor/
+
+## Development Finance Procurement
+
+- [World Bank Procurement & Debarment Monitor](https://apify.com/stefano_seggio/actor-20-mdb-procurement-monitor): Global (World Bank only — ADB / IDB excluded, see docs). World Bank Procurement Notices API + "Other Sanctions" debarred-firms table. $0.001 per notice record. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/actor-20-mdb-procurement-monitor/
+
+## Patent & IP Enforcement
+
+- [Patent & IP Enforcement Monitor](https://apify.com/stefano_seggio/actor-21-patent-ip-enforcement-monitor): US (USPTO, BYOK required) + optional EU (EPO, BYOK). USPTO PTAB proceedings (IPR/PGR/CBM/Derivation) + optional EPO opposition data. $0.002 per record. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/actor-21-patent-ip-enforcement-monitor/
+- [KIPRIS Patent & Trademark Monitor](https://apify.com/stefano_seggio/kipris-patent-trademark-status-monitor): South Korea (KIPRIS Plus). KIPRIS Plus Open API — Korean patent & utility-model filings by applicant or application number. $0.02 per new filing or status change. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/kipris-patent-trademark-status-monitor/
+
+## Pharma Safety & Clinical Trials
+
+- [Drug Safety & Recall Monitor](https://apify.com/stefano_seggio/actor-22-drug-safety-recalls-monitor): US (FDA) + EU (EMA). FDA openFDA drug enforcement API + EMA DHPC safety-alert feed. $0.001 per delivered record. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/actor-22-drug-safety-recalls-monitor/
+- [Clinical Trial Data Extractor](https://apify.com/stefano_seggio/actor-24-clinical-trials-delta-engine): Global (ClinicalTrials.gov) + US (FDA Orange Book). ClinicalTrials.gov API v2 + FDA Orange Book patent/exclusivity data. $0.002 per record. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/actor-24-clinical-trials-delta-engine/
+
+## Government Registers & Procurement
+
+- [Australian Government Grants Monitor](https://apify.com/stefano_seggio/australia-grantconnect-monitor): Australia. GrantConnect (grants.gov.au) — 360,000+ record register, no official API. $0 pay per result (see live Store pricing). MCP tool schemas: https://delta-registry-website.vercel.app/schemas/australia-grantconnect-monitor/
+- [Cordoba Government Tenders Monitor](https://apify.com/stefano_seggio/cordoba-compras-monitor): Province of Cordoba, Argentina. Province of Cordoba's official public-procurement portal. $0 pay per result (see live Store pricing). MCP tool schemas: https://delta-registry-website.vercel.app/schemas/cordoba-compras-monitor/
+- [Chile Official Gazette Monitor](https://apify.com/stefano_seggio/diario-oficial-cl-monitor): Chile (national). Diario Oficial de Chile — laws, decrees, resolutions. $0.003 per record. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/diario-oficial-cl-monitor/
+- [Entre Rios Government Tenders Monitor](https://apify.com/stefano_seggio/entrerios-compras-monitor): Province of Entre Rios, Argentina. Unidad Central de Contrataciones — Province of Entre Rios. $0 pay per result (see live Store pricing). MCP tool schemas: https://delta-registry-website.vercel.app/schemas/entrerios-compras-monitor/
+- [Florida State Procurement Monitor](https://apify.com/stefano_seggio/florida-tenders-monitor): Florida, United States. MyFloridaMarketPlace (MFMP VBS) — ITB/RFP/ITN/RFI/RSQ solicitations. $0.003 per full-detail record. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/florida-tenders-monitor/
+- [Mendoza Government Tenders Monitor](https://apify.com/stefano_seggio/mendoza-compras-monitor): Province of Mendoza, Argentina. COMPR.AR-based portal — Province of Mendoza. $0 pay per result (see live Store pricing). MCP tool schemas: https://delta-registry-website.vercel.app/schemas/mendoza-compras-monitor/
+- [Buenos Aires Province Tenders Monitor](https://apify.com/stefano_seggio/pba-tenders-monitor): Buenos Aires Province, Argentina (PBA — not CABA, not national). PBAC — official procurement portal of Buenos Aires Province. $0 pay per result (see live Store pricing). MCP tool schemas: https://delta-registry-website.vercel.app/schemas/pba-tenders-monitor/
+- [Salta Government Tenders Monitor](https://apify.com/stefano_seggio/salta-compras-monitor): Province of Salta, Argentina. Province of Salta's official public-procurement portal. $0.003 per full-detail record. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/salta-compras-monitor/
+- [Santa Fe Government Tenders Monitor](https://apify.com/stefano_seggio/santafe-compras-monitor): Province of Santa Fe, Argentina. Province of Santa Fe portal — ministries and hospitals. $0.003 per full-detail record. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/santafe-compras-monitor/
+- [Tucuman Government Tenders Monitor](https://apify.com/stefano_seggio/tucuman-compras-monitor): Province of Tucuman, Argentina. Province of Tucuman's official public-procurement portal. $0.003 per result. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/tucuman-compras-monitor/
+- [UK HSE Enforcement Monitor](https://apify.com/stefano_seggio/uk-hse-enforcement-monitor): United Kingdom. UK Health & Safety Executive — convictions and enforcement notices. $0.003 per detail-enriched record. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/uk-hse-enforcement-monitor/
+- [Lombardy Grants & Tenders Monitor](https://apify.com/stefano_seggio/regione-lombardia-grants-registry-monitor): Lombardy, Italy. dati.lombardia.it Socrata SODA API — Anagrafica dei bandi regionali (~1,912 bandi). $0.02 per NEW_LISTING or STATUS_CHANGE record. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/regione-lombardia-grants-registry-monitor/
+- [EU TED Procurement Monitor](https://apify.com/stefano_seggio/eu-ted-procurement-delta-monitor): European Union (all 27 member states, via TED). TED (Tenders Electronic Daily) official public Search API — EU public procurement notices, contract awards, and CPV-coded tenders. $0.02 per new notice. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/eu-ted-procurement-delta-monitor/
+
+## SEO & Data Pipelines
+
+- [Page Metadata Extractor (CleanMeta)](https://apify.com/stefano_seggio/page-metadata-extractor): Global. Any target URL — title, description, canonical, Open Graph, H1, word count. $0.0005 per result (never per wasted run). MCP tool schemas: https://delta-registry-website.vercel.app/schemas/page-metadata-extractor/
+
+## Corporate Registries
+
+- [Singapore ACRA Registry Monitor](https://apify.com/stefano_seggio/singapore-acra-registry-monitor): Singapore. data.gov.sg ACRA Collection 2 — full-field Singapore corporate register (~2.1M entities, UEN-indexed). $0.03 per NEW_LISTING or STATUS_CHANGE record. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/singapore-acra-registry-monitor/
+- [UK Modern Slavery Statement Registry Monitor](https://apify.com/stefano_seggio/uk-modern-slavery-statement-registry-monitor): United Kingdom. UK Modern Slavery Statement Registry (gov.uk) bulk CSV export — 34,000+ organisations, 23,500+ statements, Section 54 compliance-disclosure tracking. $0.02 per new statement. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/uk-modern-slavery-statement-registry-monitor/
+- [UAE Corporate Registry Monitor](https://apify.com/stefano_seggio/uae-corporate-registry-monitor): United Arab Emirates (Dubai Mainland, ADGM, DIFC). Dubai Pulse (DED mainland trade-license register) + ADGM (Abu Dhabi Global Market) + DIFC public registers — bilingual Arabic/English entity-name normalization. $0.02 per new entity. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/uae-corporate-registry-monitor/
+
+## Securities & Financial Enforcement
+
+- [SEC Enforcement & Litigation Feed](https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed): United States (SEC). SEC.gov litigation-release & administrative-proceeding RSS feeds + EDGAR CIK resolution. $0.05 per new enforcement release. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/sec-enforcement-litigation-delta-feed/
+
+## AI Crawler & Content Governance
+
+- [AI Crawler Permission Monitor](https://apify.com/stefano_seggio/ai-crawler-content-signal-permission-monitor): Global. robots.txt AI-crawler directives + Cloudflare Content-Signal header + llms.txt / llms-full.txt, any domain. $0.015 per ALLOWED/DISALLOWED directive flip. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/ai-crawler-content-signal-permission-monitor/
+
+## Digital Archives & Publishing
+
+- [Aozora Bunko Public-Domain Feed](https://apify.com/stefano_seggio/aozora-bunko-public-domain-text-feed): Japan (Aozora Bunko catalog). Aozora Bunko's official catalog export — 19,502-row confirmed-public-domain Japanese literature index. $0.05 per new full-text delivery. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/aozora-bunko-public-domain-text-feed/
+
+## Financial Markets & Sovereign Debt
+
+- [Sovereign Debt Auction Monitor (Brazil)](https://apify.com/stefano_seggio/emerging-market-sovereign-debt-auction-monitor): Brazil (Tesouro Nacional). Tesouro Transparente open-data portal — Brazil National Treasury domestic bond auction results (LTN, LFT, NTN-B, NTN-F), marginal-rate and coverage-ratio tracking. $0.02 per new auction. MCP tool schemas: https://delta-registry-website.vercel.app/schemas/emerging-market-sovereign-debt-auction-monitor/
+
+## Optional
+
+- [GitHub — awesome-regulatory-monitors](https://github.com/stefanoseggio/awesome-regulatory-monitors): curated source directory and delta-tracking pattern write-up, independent of this site.
+- [GitHub — delta-registry-website source](https://github.com/stefanoseggio/delta-registry-website): this site's own source, including the schema generator that produces the AI-agent tool manifests above.
