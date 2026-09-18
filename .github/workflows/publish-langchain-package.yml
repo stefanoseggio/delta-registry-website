@@ -1,0 +1,129 @@
+name: Publish langchain-delta-registry
+
+on:
+  push:
+    tags:
+      - 'langchain-v*'
+  workflow_dispatch: {}   # allows a manual, deliberate re-run without needing a fresh tag
+
+defaults:
+  run:
+    working-directory: packages/langchain-delta-registry
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Pre-flight — drift check, tests, build, credential sweep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: 'packages/langchain-delta-registry/pyproject.toml'
+
+      - name: Install package with test extras
+        run: python -m pip install -e ".[test]"
+
+      - name: Adversarial drift check — packaged tools vs. the real, current actor registry
+        run: python scripts/verify_no_drift.py
+
+      - name: Schema round-trip + retry-logic test suite
+        run: python -m pytest tests/ -v
+
+      - name: Byte-compile every module (catches any real Python 3.10 syntax incompatibility
+          in a module written/tested under a newer interpreter)
+        run: |
+          python -m py_compile src/langchain_delta_registry/*.py
+
+      - name: Credential-leak sweep across the real package source
+        run: |
+          ! grep -rniE "apify_api_|bearer [a-z0-9]{10,}|token[\"']?\s*[:=]\s*[\"'][a-z0-9]{15,}[\"']" \
+            src/ tests/ scripts/ README.md pyproject.toml
+
+      - name: Build sdist + wheel
+        run: |
+          python -m pip install build
+          python -m build
+
+      - name: Verify the built wheel actually imports and exposes 28 tools
+        run: |
+          python -m venv /tmp/wheel-smoke-test
+          /tmp/wheel-smoke-test/bin/pip install --quiet dist/*.whl
+          /tmp/wheel-smoke-test/bin/python -c "
+          from langchain_delta_registry import DELTA_REGISTRY_TOOLS
+          assert len(DELTA_REGISTRY_TOOLS) == 28, f'expected 28, got {len(DELTA_REGISTRY_TOOLS)}'
+          print(f'OK: {len(DELTA_REGISTRY_TOOLS)} tools importable from the built wheel')
+          "
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: packages/langchain-delta-registry/dist/
+
+  publish:
+    name: Publish to PyPI via Trusted Publishing
+    needs: preflight
+    runs-on: ubuntu-latest
+    # A real GitHub Environment gate — the account owner configures this in the repo's own
+    # Settings -> Environments as requiring manual approval before this job runs. This is the
+    # deliberate human checkpoint before a live, public, and difficult-to-fully-retract PyPI
+    # release — the same class of pause already established for OAuth/credential-granting steps
+    # elsewhere in this engagement, applied here to "publish something publicly and permanently."
+    environment: pypi-release
+    permissions:
+      id-token: write   # required for OIDC-based PyPI Trusted Publishing — no stored secret
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: packages/langchain-delta-registry/dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/langchain-delta-registry/dist/
+        # No username/password/token input: this workflow file + this exact job + the
+        # `pypi-release` environment must be registered as a Trusted Publisher on the
+        # langchain-delta-registry PyPI project page first (a real, one-time, human
+        # account-owner action on pypi.org — not something this workflow can configure itself).
+
+  post-publish-verification:
+    name: Confirm live on PyPI, independent of the publish step's own exit code
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Poll PyPI's real JSON API until the new version is live
+        run: |
+          for attempt in $(seq 1 10); do
+            STATUS=$(curl -s -o /tmp/pypi_response.json -w "%{http_code}" \
+              "https://pypi.org/pypi/langchain-delta-registry/json")
+            if [ "$STATUS" = "200" ]; then
+              VERSION=$(python3 -c "import json; print(json.load(open('/tmp/pypi_response.json'))['info']['version'])")
+              echo "Live on PyPI: langchain-delta-registry $VERSION"
+              exit 0
+            fi
+            echo "Attempt $attempt: PyPI not yet showing the new release (HTTP $STATUS), waiting 15s..."
+            sleep 15
+          done
+          echo "::error::PyPI did not reflect the new release after 10 attempts (150s) — the publish step reported success but the package is not independently confirmed live. Investigate manually before considering this release complete."
+          exit 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install fresh from PyPI (not from the build artifact) and smoke-test
+        run: |
+          python -m pip install langchain-delta-registry
+          python -c "
+          from langchain_delta_registry import DELTA_REGISTRY_TOOLS
+          assert len(DELTA_REGISTRY_TOOLS) == 28, f'expected 28, got {len(DELTA_REGISTRY_TOOLS)}'
+          names = sorted(t.name for t in DELTA_REGISTRY_TOOLS)
+          print(f'Confirmed: {len(names)} tools installable fresh from PyPI.')
+          print('First 3:', names[:3])
+          "

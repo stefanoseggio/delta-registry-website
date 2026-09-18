@@ -1,0 +1,192 @@
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { ACTOR_REGISTRY } from './actor-registry';
+import { mappableFields, mappableFieldsForPythonSignature, toPythonIdentifier } from './field-mapper';
+import { pyStr, pyFieldAnnotation, pyFieldExpr } from './codegen-helpers';
+import type { ApifyInputField, ApifyInputSchema } from './types';
+
+/**
+ * Generates the production-hardened `langchain-delta-registry` PyPI package
+ * (packages/langchain-delta-registry/src/langchain_delta_registry/) from the ALREADY-real,
+ * ALREADY-validated public/schemas/{slug}/openapi.json files produced by generate-all.ts — not
+ * from a fresh local/live-API read. Those files already normalized each actor's real
+ * .actor/input_schema.json into one consistent JSON-Schema shape; re-parsing them here avoids a
+ * second, independent field-mapping implementation (a real, previously-caught source of drift —
+ * see field-mapper.ts's mappableFieldsForPythonSignature docstring) and avoids 8 redundant live
+ * Apify API calls for the docs-wrapper actors.
+ *
+ * Reuses field-mapper.ts's and codegen-helpers.ts's real, already-validated functions verbatim —
+ * this is deliberately NOT a fourth independent reimplementation of "how do I turn an Apify field
+ * into a Python type annotation."
+ */
+
+const SCHEMAS_DIR = process.env.APIFY_SCHEMA_OUT_DIR ?? join(__dirname, '..', '..', 'public', 'schemas');
+const PACKAGE_SRC_DIR =
+  process.env.LANGCHAIN_PACKAGE_SRC_DIR ?? join(__dirname, '..', '..', 'packages', 'langchain-delta-registry', 'src', 'langchain_delta_registry');
+
+interface OpenAPIRequestSchema {
+  properties: Record<string, ApifyInputField>;
+  required?: string[];
+}
+
+/** Finds the first POST operation's requestBody schema, regardless of sync/async path shape —
+ * the same resolution logic already proven in lib/aio-generator/generate-aio-files.ts. */
+function extractRequestSchema(openapiDoc: Record<string, unknown>): OpenAPIRequestSchema {
+  const paths = openapiDoc.paths as Record<string, Record<string, unknown>> | undefined;
+  if (!paths) throw new Error('openapi.json has no paths');
+  for (const pathItem of Object.values(paths)) {
+    const post = pathItem.post as Record<string, unknown> | undefined;
+    if (!post) continue;
+    const requestBody = post.requestBody as Record<string, unknown> | undefined;
+    const content = requestBody?.content as Record<string, unknown> | undefined;
+    const mediaType = content?.['application/json'] as Record<string, unknown> | undefined;
+    const schema = mediaType?.schema as OpenAPIRequestSchema | undefined;
+    if (schema) return schema;
+  }
+  throw new Error('openapi.json has no POST operation with a requestBody schema');
+}
+
+function toApifyInputSchema(req: OpenAPIRequestSchema): ApifyInputSchema {
+  return { type: 'object', properties: req.properties, required: req.required ?? [] };
+}
+
+interface ActorPackageInfo {
+  slug: string;
+  apifyActorId: string;
+  moduleName: string;
+  className: string;
+  toolVarName: string;
+  title: string;
+  description: string;
+  inputSchema: ApifyInputSchema;
+}
+
+function loadActorInfo(slug: string, apifyActorId: string): ActorPackageInfo {
+  const openapiPath = join(SCHEMAS_DIR, slug, 'openapi.json');
+  const openapiDoc = JSON.parse(readFileSync(openapiPath, 'utf-8')) as Record<string, unknown>;
+  const info = openapiDoc.info as { title: string; description: string };
+  const reqSchema = extractRequestSchema(openapiDoc);
+  const moduleName = toPythonIdentifier(slug);
+  const pascal = slug.split('-').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+  return {
+    slug,
+    apifyActorId,
+    moduleName,
+    className: `${pascal}Input`,
+    toolVarName: `${moduleName}_tool`,
+    // openapi.json's info.title is prefixed "Delta Registry — <real actor title>" by
+    // to-openapi.ts; stripped back here since the per-actor module wants just the actor's own
+    // real title, not the fleet-wide prefix.
+    title: info.title.replace(/^Delta Registry\s*[—-]\s*/, ''),
+    description: info.description,
+    inputSchema: toApifyInputSchema(reqSchema),
+  };
+}
+
+function buildToolModule(actor: ActorPackageInfo): string {
+  const fields = mappableFields(actor.inputSchema);
+  const sigFields = mappableFieldsForPythonSignature(actor.inputSchema);
+
+  const modelFields = fields
+    .map(({ name, field, required }) => `    ${name}: ${pyFieldAnnotation(field, required)} = ${pyFieldExpr(field, required)}`)
+    .join('\n');
+
+  const paramList = sigFields
+    .map(({ name, field, required }) => `${name}: ${pyFieldAnnotation(field, required)}${required ? '' : ' = None'}`)
+    .join(', ');
+
+  const payloadLines = fields
+    .map(({ name, required }) =>
+      required ? `        "${name}": ${name},` : `        **({"${name}": ${name}} if ${name} is not None else {}),`,
+    )
+    .join('\n');
+
+  return `"""Auto-generated by lib/schema-generator/langchain-package-generator.ts from
+public/schemas/${actor.slug}/openapi.json — do not hand-edit. Regenerate instead.
+"""
+from typing import Optional
+
+from pydantic import BaseModel, Field
+from langchain_core.tools import StructuredTool
+
+from ._client import call_apify_actor
+
+APIFY_ACTOR_ID = ${pyStr(actor.apifyActorId)}  # stefano_seggio/${actor.slug} — immutable Apify ID,
+# not the slug: the OpenAPI adapter this package's data is sourced from was itself corrected this
+# session to call by ID rather than slug, after a real slug-rename incident (primer-actor ->
+# page-metadata-extractor) — kept consistent here for the same reason.
+
+
+class ${actor.className}(BaseModel):
+    """Mirrors ${actor.slug}'s real .actor/input_schema.json field-for-field."""
+
+${modelFields || '    pass'}
+
+
+def _${actor.moduleName}(${paramList}) -> list[dict]:
+    payload = {
+${payloadLines}
+    }
+    return call_apify_actor(APIFY_ACTOR_ID, payload)
+
+
+${actor.toolVarName} = StructuredTool.from_function(
+    func=_${actor.moduleName},
+    name=${pyStr(actor.slug)},
+    description=${pyStr(actor.description)},
+    args_schema=${actor.className},
+)
+`;
+}
+
+function buildInitPy(actors: ActorPackageInfo[]): string {
+  const imports = actors.map((a) => `from .${a.moduleName} import ${a.toolVarName}`).join('\n');
+  const listItems = actors.map((a) => `    ${a.toolVarName},`).join('\n');
+  return `"""langchain-delta-registry: 28 pay-per-event regulatory, sanctions, procurement, and
+corporate-registry monitoring tools for LangChain agents, backed by Apify's hosted MCP gateway.
+
+Auto-generated by lib/schema-generator/langchain-package-generator.ts — do not hand-edit.
+"""
+${imports}
+
+DELTA_REGISTRY_TOOLS = [
+${listItems}
+]
+
+__all__ = ["DELTA_REGISTRY_TOOLS"]
+`;
+}
+
+function buildDriftManifest(actors: ActorPackageInfo[]): string {
+  // A real, machine-checkable manifest scripts/verify_no_drift.py compares against — not
+  // re-deriving the expected module list by re-parsing Python, just comparing two real JSON facts.
+  return JSON.stringify(
+    {
+      generatedAt: new Date().toISOString(),
+      actorCount: actors.length,
+      modules: actors.map((a) => ({ slug: a.slug, moduleName: a.moduleName, apifyActorId: a.apifyActorId })),
+    },
+    null,
+    2,
+  );
+}
+
+function main() {
+  mkdirSync(PACKAGE_SRC_DIR, { recursive: true });
+
+  const actors = ACTOR_REGISTRY.map((a) => loadActorInfo(a.slug, a.apifyActorId));
+  if (actors.length !== 28) {
+    throw new Error(`Expected 28 actors, resolved ${actors.length} — fleet count drifted, investigate before generating.`);
+  }
+
+  for (const actor of actors) {
+    writeFileSync(join(PACKAGE_SRC_DIR, `${actor.moduleName}.py`), buildToolModule(actor), 'utf-8');
+  }
+  writeFileSync(join(PACKAGE_SRC_DIR, '__init__.py'), buildInitPy(actors), 'utf-8');
+  writeFileSync(join(PACKAGE_SRC_DIR, 'py.typed'), '', 'utf-8');
+  writeFileSync(join(PACKAGE_SRC_DIR, '..', '..', 'drift-manifest.json'), buildDriftManifest(actors), 'utf-8');
+
+  console.log(`Generated ${actors.length} tool modules + __init__.py in ${PACKAGE_SRC_DIR}`);
+}
+
+main();

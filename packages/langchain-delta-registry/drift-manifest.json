@@ -1,0 +1,146 @@
+{
+  "generatedAt": "2026-09-18T17:29:26.797Z",
+  "actorCount": 28,
+  "modules": [
+    {
+      "slug": "actor-18-b2b-lead-magnet",
+      "moduleName": "actor_18_b2b_lead_magnet",
+      "apifyActorId": "5QufcYxRkFNHM4h8K"
+    },
+    {
+      "slug": "actor-19-maritime-sanctions-monitor",
+      "moduleName": "actor_19_maritime_sanctions_monitor",
+      "apifyActorId": "dR68wHyuOLS2WEhmo"
+    },
+    {
+      "slug": "actor-20-mdb-procurement-monitor",
+      "moduleName": "actor_20_mdb_procurement_monitor",
+      "apifyActorId": "dyzTtWjfyYd7bvUZY"
+    },
+    {
+      "slug": "actor-21-patent-ip-enforcement-monitor",
+      "moduleName": "actor_21_patent_ip_enforcement_monitor",
+      "apifyActorId": "fTvz8lwj3F1FrPQfM"
+    },
+    {
+      "slug": "actor-22-drug-safety-recalls-monitor",
+      "moduleName": "actor_22_drug_safety_recalls_monitor",
+      "apifyActorId": "HJZvKxFUpZop6gIQ3"
+    },
+    {
+      "slug": "actor-24-clinical-trials-delta-engine",
+      "moduleName": "actor_24_clinical_trials_delta_engine",
+      "apifyActorId": "PkYgfW33Sh6teGXUX"
+    },
+    {
+      "slug": "ai-crawler-content-signal-permission-monitor",
+      "moduleName": "ai_crawler_content_signal_permission_monitor",
+      "apifyActorId": "eWDx4XY54R5GXysFi"
+    },
+    {
+      "slug": "aozora-bunko-public-domain-text-feed",
+      "moduleName": "aozora_bunko_public_domain_text_feed",
+      "apifyActorId": "K0XRDbUteacQL3jeF"
+    },
+    {
+      "slug": "australia-grantconnect-monitor",
+      "moduleName": "australia_grantconnect_monitor",
+      "apifyActorId": "gt7wS4T0uFRXDz49n"
+    },
+    {
+      "slug": "cordoba-compras-monitor",
+      "moduleName": "cordoba_compras_monitor",
+      "apifyActorId": "q9jhMgJRSGjyNbXKA"
+    },
+    {
+      "slug": "diario-oficial-cl-monitor",
+      "moduleName": "diario_oficial_cl_monitor",
+      "apifyActorId": "qfBeEKuLfYUw9UOuW"
+    },
+    {
+      "slug": "emerging-market-sovereign-debt-auction-monitor",
+      "moduleName": "emerging_market_sovereign_debt_auction_monitor",
+      "apifyActorId": "V3i5xKy1kf7vL0Rue"
+    },
+    {
+      "slug": "entrerios-compras-monitor",
+      "moduleName": "entrerios_compras_monitor",
+      "apifyActorId": "oiXeFzZGlIQ6mKgoo"
+    },
+    {
+      "slug": "eu-ted-procurement-delta-monitor",
+      "moduleName": "eu_ted_procurement_delta_monitor",
+      "apifyActorId": "Zxy0w0zjmUoMzacF9"
+    },
+    {
+      "slug": "florida-tenders-monitor",
+      "moduleName": "florida_tenders_monitor",
+      "apifyActorId": "afSZyXLVcgnLpucyo"
+    },
+    {
+      "slug": "kipris-patent-trademark-status-monitor",
+      "moduleName": "kipris_patent_trademark_status_monitor",
+      "apifyActorId": "9Wg73rplxFqgVq6fY"
+    },
+    {
+      "slug": "mendoza-compras-monitor",
+      "moduleName": "mendoza_compras_monitor",
+      "apifyActorId": "bb4cRgt1i27hvr9Ug"
+    },
+    {
+      "slug": "page-metadata-extractor",
+      "moduleName": "page_metadata_extractor",
+      "apifyActorId": "U9fUBHDngX6IyjzzF"
+    },
+    {
+      "slug": "pba-tenders-monitor",
+      "moduleName": "pba_tenders_monitor",
+      "apifyActorId": "yWvRQyWSyGVLJPtQ7"
+    },
+    {
+      "slug": "regione-lombardia-grants-registry-monitor",
+      "moduleName": "regione_lombardia_grants_registry_monitor",
+      "apifyActorId": "f0xRlvzERsbgbU1ru"
+    },
+    {
+      "slug": "salta-compras-monitor",
+      "moduleName": "salta_compras_monitor",
+      "apifyActorId": "Tx9wBKZyySZa5WcsE"
+    },
+    {
+      "slug": "santafe-compras-monitor",
+      "moduleName": "santafe_compras_monitor",
+      "apifyActorId": "jfoq1flE7KqKb3qAb"
+    },
+    {
+      "slug": "sec-enforcement-litigation-delta-feed",
+      "moduleName": "sec_enforcement_litigation_delta_feed",
+      "apifyActorId": "EDhT9Mvrdm2hzTECA"
+    },
+    {
+      "slug": "singapore-acra-registry-monitor",
+      "moduleName": "singapore_acra_registry_monitor",
+      "apifyActorId": "ht22I1rCH3Ah9QGnM"
+    },
+    {
+      "slug": "tucuman-compras-monitor",
+      "moduleName": "tucuman_compras_monitor",
+      "apifyActorId": "TdJtze8dfyykMj2qA"
+    },
+    {
+      "slug": "uae-corporate-registry-monitor",
+      "moduleName": "uae_corporate_registry_monitor",
+      "apifyActorId": "BmhA43NYN15DxOLTD"
+    },
+    {
+      "slug": "uk-hse-enforcement-monitor",
+      "moduleName": "uk_hse_enforcement_monitor",
+      "apifyActorId": "jV35qppM82fjyjsle"
+    },
+    {
+      "slug": "uk-modern-slavery-statement-registry-monitor",
+      "moduleName": "uk_modern_slavery_statement_registry_monitor",
+      "apifyActorId": "vWDvsAd2iXgVp5aC7"
+    }
+  ]
+}
