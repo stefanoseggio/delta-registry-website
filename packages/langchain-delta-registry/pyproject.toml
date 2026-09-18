@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "langchain-delta-registry"
-version = "1.0.0"
+version = "1.0.1"
 description = "28 pay-per-event regulatory, sanctions, procurement, and corporate-registry monitoring tools for LangChain agents, backed by Apify's hosted MCP gateway."
 readme = "README.md"
 license = "Apache-2.0"
