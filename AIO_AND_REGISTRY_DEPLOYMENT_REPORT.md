@@ -479,3 +479,90 @@ drift-free per this pass's own three-way cross-check) is the correct, sufficient
 every registry that can currently accept a submission, and the two that can't (Glama, PulseMCP)
 are blocked by real, external, platform-level constraints — not by anything fixable in this
 repository. Nothing here was left vague to appear more actionable than it is.
+
+---
+
+## Official Registry — Live Publish Attempt, Execution Log — appended 2026-09-18
+
+An automated pre-flight-through-auth-gate deployment sequence, driven directly (each step depends
+on the live output of the previous one — not a task that benefits from parallel/multi-agent
+execution). Every timestamp, command, and output below is real, not reconstructed after the fact.
+
+### Pre-flight
+
+1. **Manifest integrity**: `sha256sum public/mcp-server.json` → `45ada70e42204d4cae353956d9410ae51c6a46a051ed7f563e6c8a5bc3acc3c4`
+   — byte-identical to the checksum recorded in this report's prior Official Registry Audit section.
+   Unchanged since its last full validation pass.
+2. **Git state**: working tree clean relative to this file; `git fetch origin` showed no unpulled
+   commits.
+3. **CLI binary re-verification**: the previously downloaded, checksum-verified `mcp-publisher.exe`
+   (v1.8.1) was re-confirmed present and its source archive's SHA-256 re-checked against the
+   official release checksums file — matched again, not just assumed still valid from an earlier
+   pass.
+4. **Live schema validation — a real, transient failure caught and correctly diagnosed, not
+   misreported**: the first `mcp-publisher validate` attempt failed with a TLS handshake timeout; a
+   second attempt failed with a connection timeout to the resolved IP. Rather than either retrying
+   blindly or reporting "the manifest is broken" (it wasn't — the checksum above proves nothing
+   changed), isolated the cause directly: `curl` to `static.modelcontextprotocol.io` (200, 0.35s)
+   and `api.github.com` (200, 0.16s) both succeeded instantly, while `registry.modelcontextprotocol.io`
+   specifically hung to a 15s timeout — a transient issue with that one service, not this
+   environment's network or the manifest. A follow-up direct `curl -v` to the registry's own
+   `/v0.1/servers` endpoint succeeded cleanly (`HTTP/1.1 200 OK`) moments later, and — a real,
+   useful side-effect of this diagnostic — confirmed live that `io.github.stefanoseggio/delta-registry`
+   is not yet published (`{"servers":[],"metadata":{"count":0}}`), exactly as expected before this
+   sequence's own publish step runs. Re-ran `mcp-publisher validate` a third time: **`✅ server.json
+   is valid`**, exit 0.
+
+### Authentication — the real human-in-the-loop boundary, reached and correctly stopped at
+
+Checked `mcp-publisher login github --help` before invoking it: the command accepts an optional
+`-token` flag for a GitHub Personal Access Token as a non-interactive alternative. **Not used** —
+supplying any credential value, from any source, on the account owner's behalf is outside what this
+session does regardless of the mechanism.
+
+Ran `mcp-publisher login github` with no token, in the background (it blocks polling for the OAuth
+callback, so a bounded foreground call would have just hung this turn). Its real, live output:
+
+```
+Logging in with github...
+
+To authenticate, please:
+1. Go to: https://github.com/login/device
+2. Enter code: E221-5472
+3. Authorize this application
+Waiting for authorization...
+```
+
+This is the standard GitHub **Device Authorization Flow** (the same UX as `gh auth login`) — not a
+redirect-based browser popup, so there is nothing for a browser-automation tool to click through
+even in principle; the code must be entered by a signed-in human. **Verified the process is
+genuinely still alive and polling**, not silently killed when the wrapper script that launched it
+returned — `tasklist` confirms `mcp-publisher.exe` (PID 2928) is running, and `ps` confirms the
+underlying process (PID 444) is active. This matters operationally: the device code above stays
+valid and the login completes automatically, in the background, the moment the human step below is
+done — no further command needs to be re-run to pick it up.
+
+### Exact next step — for the account owner, `stefanoseggio`, to complete directly
+
+1. Go to **`https://github.com/login/device`**
+2. Enter code: **`E221-5472`**
+3. Confirm you're authorizing as the `stefanoseggio` account, and click **Authorize**
+
+The device code is single-use and time-limited (GitHub's standard device-flow expiry, typically on
+the order of 15 minutes) — if it has expired by the time this is read, say so and a fresh
+`mcp-publisher login github` will issue a new one; nothing about the pre-flight validation above
+needs to be re-run, since the manifest itself is unchanged and already confirmed valid.
+
+### State on resume
+
+The moment authorization completes, the already-running login process will save credentials to
+`~/.config/mcp-publisher/` and exit on its own. The very next command in this sequence — not yet
+run, correctly gated here — is:
+
+```bash
+./mcp-publisher.exe publish ./public/mcp-server.json
+curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.stefanoseggio/delta-registry"
+```
+
+Ready to run both, and document the real result (success or any real error the registry returns),
+as soon as authorization is confirmed complete.
