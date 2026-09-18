@@ -1,0 +1,125 @@
+{
+  "type": "function",
+  "function": {
+    "name": "sec-enforcement-litigation-delta-feed",
+    "description": "Structures SEC.gov's own Litigation Releases and Administrative Proceedings feeds into delta events: respondent, statute/rule citations, monetary sanctions, and a best-effort linked EDGAR CIK. Outside the saturated 10-K/8-K/Form-4 filings-scraper niche. Pay-per-event: billed only for what changed.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "sources": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "Which of SEC.gov's own enforcement feeds to walk each run. 'Litigation Releases' are HTML pages under sec.gov/enforcement-litigation/litigation-releases/lr-NNNNN (RSS at .../litigation-releases/rss, live-verified). 'Administrative Proceedings' link directly to PDF orders under sec.gov/files/litigation/admin/YYYY/34-NNNNNN.pdf (RSS at .../administrative-proceedings/rss, live-verified) and require a separate PDF text-extraction pass. Default [\"litigation_releases\",\"administrative_proceedings\"] if omitted.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "litigation_releases",
+              "administrative_proceedings"
+            ],
+            "enumTitles": [
+              "Litigation Releases (HTML)",
+              "Administrative Proceedings (PDF orders)"
+            ]
+          }
+        },
+        "onlyNew": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "When true (default), only NEW_LISTING and content-changed (UPDATED) records are pushed as charged events. Set false to also push free, uncharged SNAPSHOT_NO_DIFF records for every release the walk touches. Default true if omitted."
+        },
+        "maxItemsPerRun": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Caps the number of charged (result/result-summary) events this run will push, independent of your Apify spending limit. 0 means no Actor-side cap. Default 0 if omitted.",
+          "minimum": 0
+        },
+        "enableCikLinking": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "When true (default), each parsed respondent name is looked up against SEC's own EDGAR company database (browse-edgar company search) to attach a linked_edgar_cik. A match scoring below cikMatchConfidenceThreshold is left null rather than guessed. Default true if omitted."
+        },
+        "cikMatchConfidenceThreshold": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Minimum name-match confidence (0-1) required before linked_edgar_cik is populated. Default 0.80 is deliberately conservative - a real respondent, 'Invesco Alpha Inc.', shares a name substring with the real, unrelated NYSE-listed Invesco Ltd, and a lower threshold would risk wrongly attaching a real public company's CIK to an unrelated enforcement action in your vendor-risk feed. Default 0.8 if omitted.",
+          "minimum": 0.5
+        },
+        "watchlistNames": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "Entity or individual names (case-insensitive substring match against parsed respondents) you specifically want flagged. A match sets is_watchlist_match: true. Default [] if omitted."
+        },
+        "userAgent": {
+          "type": "string",
+          "description": "SEC's own fair-access policy (sec.gov/os/webmaster-faq#developers) requires automated requests to sec.gov/data.sec.gov to declare a descriptive User-Agent identifying the requester, typically '<Your Company Name> <your-contact-email>'. Sent verbatim on every request."
+        },
+        "requestDelayMs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "A flat delay applied between every successful request to sec.gov/data.sec.gov, independent of retries - a deliberately conservative default since this Actor's endpoints were live-verified for shape and availability only, not load-tested against SEC's general fair-access ceiling. Default 750 if omitted.",
+          "minimum": 100
+        },
+        "maxRetries": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Retry attempts for a 429/5xx response or a network-level failure before a request is treated as failed for this run. Exponential backoff (1000ms * 2^attempt, jittered, capped at 15s). Default 4 if omitted.",
+          "minimum": 0
+        },
+        "requestTimeoutSecs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "AbortSignal timeout applied to every individual HTTP request (feed page, release page, PDF download, EDGAR lookup). Default 30 if omitted.",
+          "minimum": 5
+        },
+        "deltaStateName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Names the Key-Value Store this schedule's seen-release state is kept in. Run two schedules - e.g. one full-coverage, one watchlist-only - without them draining each other's baseline by giving each a distinct name here. Default \"default\" if omitted."
+        },
+        "resetState": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "When true, clears this schedule's stored seen-release state before walking, so the next run re-baselines from scratch. Use for testing or recovering a corrupted state store, not routine operation. Default false if omitted."
+        }
+      },
+      "required": [
+        "sources",
+        "onlyNew",
+        "maxItemsPerRun",
+        "enableCikLinking",
+        "cikMatchConfidenceThreshold",
+        "watchlistNames",
+        "userAgent",
+        "requestDelayMs",
+        "maxRetries",
+        "requestTimeoutSecs",
+        "deltaStateName",
+        "resetState"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

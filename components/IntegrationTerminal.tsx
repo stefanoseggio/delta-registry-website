@@ -249,6 +249,77 @@ function IntegrationWorkbench() {
   )
 }
 
+// --- AI agent tool schemas ------------------------------------------------------------------
+//
+// Real, generated artifacts under public/schemas/{slug}/ — produced by
+// lib/schema-generator/generate-all.ts from each actor's own .actor/input_schema.json, never
+// hand-authored per actor. Links only, not inlined: these are per-format files (some are Python
+// source, not JSON), so this section points at them as static assets rather than duplicating
+// their content into the JS bundle.
+
+interface SchemaFormatLink {
+  file: string
+  label: string
+}
+
+const SCHEMA_FORMATS: SchemaFormatLink[] = [
+  { file: 'openai-chat-completions.json', label: 'OpenAI — Chat Completions' },
+  { file: 'openai-responses.json', label: 'OpenAI — Responses API' },
+  { file: 'openapi.json', label: 'OpenAPI 3.1 — GPT Actions' },
+  { file: 'anthropic.json', label: 'Anthropic — tool_use' },
+  { file: 'gemini.json', label: 'Gemini — functionDeclarations' },
+  { file: 'langchain_tool.py', label: 'LangChain (Python)' },
+  { file: 'langchain_tool.ts', label: 'LangChain.js (TypeScript)' },
+  { file: 'llamaindex_tool.py', label: 'LlamaIndex (Python)' },
+  { file: 'crewai_tool.py', label: 'CrewAI (Python)' },
+  { file: 'ag2_tool.py', label: 'AG2 / AutoGen-lineage (Python)' },
+]
+
+function AIAgentSchemas() {
+  return (
+    <div className="mt-6 rounded-lg border border-border/60 bg-titanium/40 p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-mono text-sm text-contrast">AI Agent Tool Schemas</h3>
+        <a
+          href="/schemas/index.json"
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full border border-cyan-accent/40 px-3 py-1 font-mono text-[10px] uppercase tracking-wide text-cyan-accent transition hover:border-cyan-accent hover:bg-cyan-accent/10"
+        >
+          Install LangChain Tool · full manifest →
+        </a>
+      </div>
+      <p className="mt-2 max-w-3xl text-xs text-muted md:text-sm">
+        Every one of the {ACTOR_COUNT} actors is also generated, per actor, into 10 ready-to-use AI-agent
+        tool definitions — derived directly from that actor&apos;s real input schema, not hand-written. Each
+        actor has its own folder at <code className="font-mono text-cyan-accent/90">/schemas/&#123;slug&#125;/</code>.
+        Below: the three workbench actors above as a starting point.
+      </p>
+      <div className="mt-4 space-y-4">
+        {WORKBENCH_ACTORS.map((actor) => (
+          <div key={actor.slug} className="rounded-md border border-border/60 bg-obsidian p-4">
+            <div className="font-mono text-xs text-contrast">{actor.title}</div>
+            <code className="font-mono text-[11px] text-muted">/schemas/{actor.slug}/</code>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {SCHEMA_FORMATS.map((format) => (
+                <a
+                  key={format.file}
+                  href={`/schemas/${actor.slug}/${format.file}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-border/60 bg-titanium px-2.5 py-1 font-mono text-[10px] text-muted transition hover:border-cyan-accent/50 hover:text-cyan-accent"
+                >
+                  {format.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // --- Section ------------------------------------------------------------------------------
 
 export function IntegrationTerminal() {
@@ -297,6 +368,8 @@ export function IntegrationTerminal() {
         <div className="mt-10">
           <IntegrationWorkbench />
         </div>
+
+        <AIAgentSchemas />
 
         <div className="mt-6">
           <TerminalCard filename="webhook-payload.json" label="Webhook — actor.run.succeeded">

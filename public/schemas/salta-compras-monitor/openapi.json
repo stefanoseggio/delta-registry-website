@@ -1,0 +1,420 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — Salta Argentina Contrataciones - Tender Delta API",
+    "description": "Extracts every currently open tender and contract award (licitaciones, adjudicaciones, contrataciones) from Salta Province, Argentina's official procurement portal, with organism, expediente, opening date/time and document links per publication. Delta mode flags new, amended and closed processes.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/Tx9wBKZyySZa5WcsE/runs": {
+      "post": {
+        "operationId": "startSaltaComprasMonitorRun",
+        "summary": "Start an async run of: Extracts every currently open tender and contract award (licitaciones, adjudicaciones, contrataciones) from Salta Province, Argentina's official procurement portal, with organism, expediente, opening date/time and document links per publication. Delta mode flags new, amended and closed processes.",
+        "x-async-pattern-reason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fetchDetail": {
+                    "type": "boolean",
+                    "description": "When enabled (default), fetches each publication's detail page for the full field set (organismo gestor, costo pliego, lugar de entrega, when present) plus attached document links. Disable for a faster, listing-only run.",
+                    "default": true
+                  },
+                  "maxItems": {
+                    "type": "integer",
+                    "description": "Hard cap on the number of publications returned this run. The portal serves ~250 currently-open (vigentes) publications at a time, 5 per page.",
+                    "default": 100,
+                    "minimum": 1
+                  },
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "Delta mode for daily/recurring monitoring: returns only publications that are new, changed (a fingerprinted amendment - a new monto, document, date...) or closed since a previous run. Seen ids are persisted across runs in a named key-value store unique to this actor (\"salta-compras-monitor-delta-state\"), not the run's own default store (which is isolated per run and would not survive between scheduled runs). Every record still carries is_new, so a normal (onlyNew=false) run also tells you which of its results are new. Pagination is NOT stopped early once already-seen records are reached: this actor's listing is sorted by Fecha/Hora Apertura (the bid-opening deadline), not by when a public...",
+                    "default": false
+                  },
+                  "eventTypes": {
+                    "type": "array",
+                    "description": "Which kinds of change to deliver when 'Only new' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. UPDATED = seen before, a field changed (fingerprinted). CLOSED = a previously-seen publication is absent from a complete walk this run - no longer vigente. CLOSED detection only runs when maxItems does not truncate the walk (a partial walk cannot prove absence) - see AGENTS.md.",
+                    "default": [
+                      "NEW_LISTING",
+                      "UPDATED",
+                      "CLOSED"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "NEW_LISTING",
+                        "UPDATED",
+                        "CLOSED"
+                      ]
+                    }
+                  },
+                  "dateRange": {
+                    "type": "string",
+                    "description": "Filters results to publications whose own Fecha/Hora Apertura (bid-opening deadline - the only date field this source exposes anywhere, listing or detail; there is no separate publication date) falls within the given window. For the \"vigentes\" (currently open) publications this actor covers, that date is almost always in the FUTURE relative to when this actor runs, so this is an upcoming-deadline filter (\"opens within the next 24h/7d/30d\"), not a \"published in the last N\" filter. Independent of onlyNew.",
+                    "enum": [
+                      "24h",
+                      "7d",
+                      "30d"
+                    ]
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run started. Poll GET /actor-runs/{runId} with the returned run id until status is SUCCEEDED, then fetch its dataset items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/actor-runs/{runId}": {
+      "get": {
+        "operationId": "getSaltaComprasMonitorRunStatus",
+        "summary": "Poll the status of a previously started run.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current run status. When status is SUCCEEDED, fetch the dataset via GET /datasets/{datasetId}/items, passing this response's defaultDatasetId field as {datasetId}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "defaultDatasetId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/datasets/{datasetId}/items": {
+      "get": {
+        "operationId": "getSaltaComprasMonitorDatasetItems",
+        "summary": "Fetch the dataset items produced by a completed run.",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "actorSpecification": 1,
+                    "title": "Dataset Schema",
+                    "fields": {
+                      "type": "object",
+                      "properties": {
+                        "record_id": {
+                          "title": "Record ID",
+                          "type": "string"
+                        },
+                        "titulo": {
+                          "title": "Titulo",
+                          "type": "string"
+                        },
+                        "tipoPublicacion": {
+                          "title": "Tipo Publicacion",
+                          "type": "string"
+                        },
+                        "numeroPublicacion": {
+                          "title": "Numero Publicacion",
+                          "type": "string"
+                        },
+                        "fechaApertura": {
+                          "title": "Fecha Apertura",
+                          "type": "string"
+                        },
+                        "horaApertura": {
+                          "title": "Hora Apertura",
+                          "type": "string"
+                        },
+                        "objeto": {
+                          "title": "Objeto",
+                          "type": "string"
+                        },
+                        "organismo": {
+                          "title": "Organismo",
+                          "type": "string"
+                        },
+                        "expediente": {
+                          "title": "Expediente",
+                          "type": "string"
+                        },
+                        "consultaPliego": {
+                          "title": "Consulta y Adquisicion Pliego",
+                          "type": "string"
+                        },
+                        "consultas": {
+                          "title": "Consultas",
+                          "type": "string"
+                        },
+                        "event_type": {
+                          "title": "Event Type",
+                          "type": "string",
+                          "description": "NEW_LISTING (never seen before), UPDATED (a fingerprinted field changed), UNCHANGED (only when Only new is off) or CLOSED (no longer vigente - closed, resolved, expired or withdrawn; the source does not say which)."
+                        },
+                        "is_new": {
+                          "title": "Is New",
+                          "type": "boolean"
+                        },
+                        "contentHash": {
+                          "title": "Content Hash",
+                          "type": "string",
+                          "description": "sha1 fingerprint of this record's changeable fields - used to detect UPDATED between runs."
+                        },
+                        "source_url": {
+                          "title": "Source URL",
+                          "type": "string"
+                        },
+                        "detail": {
+                          "title": "Detail",
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "fields": {
+                              "type": "object"
+                            },
+                            "pdfUrl": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "archivosAdjuntos": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "nombre": {
+                                    "type": "string"
+                                  },
+                                  "url": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "scraped_at": {
+                          "title": "Scraped at",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "transformation": {
+                          "fields": [
+                            "record_id",
+                            "tipoPublicacion",
+                            "numeroPublicacion",
+                            "organismo",
+                            "objeto",
+                            "fechaApertura",
+                            "horaApertura",
+                            "is_new"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "ID",
+                              "format": "text",
+                              "field": "record_id"
+                            },
+                            {
+                              "label": "Tipo",
+                              "format": "text",
+                              "field": "tipoPublicacion"
+                            },
+                            {
+                              "label": "Numero",
+                              "format": "text",
+                              "field": "numeroPublicacion"
+                            },
+                            {
+                              "label": "Organismo",
+                              "format": "text",
+                              "field": "organismo"
+                            },
+                            {
+                              "label": "Objeto",
+                              "format": "text",
+                              "field": "objeto"
+                            },
+                            {
+                              "label": "Apertura",
+                              "format": "text",
+                              "field": "fechaApertura"
+                            },
+                            {
+                              "label": "Hora",
+                              "format": "text",
+                              "field": "horaApertura"
+                            },
+                            {
+                              "label": "Nuevo",
+                              "format": "boolean",
+                              "field": "is_new"
+                            }
+                          ]
+                        }
+                      },
+                      "changes": {
+                        "title": "Status changes & amendments",
+                        "transformation": {
+                          "fields": [
+                            "record_id",
+                            "event_type",
+                            "tipoPublicacion",
+                            "organismo",
+                            "objeto",
+                            "fechaApertura",
+                            "source_url",
+                            "scraped_at"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "ID",
+                              "format": "text",
+                              "field": "record_id"
+                            },
+                            {
+                              "label": "Evento",
+                              "format": "text",
+                              "field": "event_type"
+                            },
+                            {
+                              "label": "Tipo",
+                              "format": "text",
+                              "field": "tipoPublicacion"
+                            },
+                            {
+                              "label": "Organismo",
+                              "format": "text",
+                              "field": "organismo"
+                            },
+                            {
+                              "label": "Objeto",
+                              "format": "text",
+                              "field": "objeto"
+                            },
+                            {
+                              "label": "Apertura",
+                              "format": "text",
+                              "field": "fechaApertura"
+                            },
+                            {
+                              "label": "URL",
+                              "format": "link",
+                              "field": "source_url"
+                            },
+                            {
+                              "label": "Detectado",
+                              "format": "date",
+                              "field": "scraped_at"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

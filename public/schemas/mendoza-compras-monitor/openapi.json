@@ -1,0 +1,385 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — Mendoza COMPR.AR Argentina - Tender Delta API",
+    "description": "Extracts licitaciones and contrataciones directas from the Province of Mendoza, Argentina's COMPR.AR procurement portal, with type, status, organism and budget per process. Delta mode flags new listings, status changes and amendments so you stop manually re-checking comprar.mendoza.gov.ar.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/bb4cRgt1i27hvr9Ug/runs": {
+      "post": {
+        "operationId": "startMendozaComprasMonitorRun",
+        "summary": "Start an async run of: Extracts licitaciones and contrataciones directas from the Province of Mendoza, Argentina's COMPR.AR procurement portal, with type, status, organism and budget per process. Delta mode flags new listings, status changes and amendments so you stop manually re-checking comprar.mendoza.gov.ar.",
+        "x-async-pattern-reason": "Real observed max runtime 98.1s exceeds the 35s safety margin under GPT Actions' 45s cap — using POST /runs + poll GET /actor-runs/{runId}.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "maxItems": {
+                    "type": "integer",
+                    "description": "Hard cap on the number of RAW processes walked this run (10 per page, 25,000+ total at audit time). This is the same cap as before - onlyNew/dateRange are applied on top of this raw walk as post-filters, so the number of records actually returned can be lower than maxItems when either is active. This actor does not yet expose the advanced-search form's own filters (date range, organism, process type) as actor input; start small, raise gradually. Default kept low (20) because resolveSourceUrl's per-row postback (~1.5s each, see its own description) makes a 100-item blank run take several minutes end-to-end against this site's real latency - raise this for a real monitoring run.",
+                    "default": 20,
+                    "minimum": 1
+                  },
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "Persists which numeroProceso ids this actor has already returned - and their last-known estado + content fingerprint - in its own private key-value store that survives between scheduled runs, and keeps only the ones that are new, status-changed or amended. IMPORTANT for this source: comprar.mendoza.gov.ar's process listing is sorted by numero de proceso ascending (each organism's own sequential counter, cycling through years) - NOT by date and NOT newest-first. Verified live: a blank-form search's first page mixes processes from 2019 through 2026 rather than showing only the most recent ones. Because of this, onlyNew is a safe POST-FILTER (fetch up to maxItems raw processes exactly as a n...",
+                    "default": false
+                  },
+                  "eventTypes": {
+                    "type": "array",
+                    "description": "Which kinds of change to deliver when 'Only new records' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = seen before, estado changed (e.g. Pendiente Analisis -> Adjudicado) - free to detect, no extra request. UPDATED = seen before, same estado, a field changed (monto, fecha, unidad ejecutora...).",
+                    "default": [
+                      "NEW_LISTING",
+                      "STATUS_CHANGE",
+                      "UPDATED"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "NEW_LISTING",
+                        "STATUS_CHANGE",
+                        "UPDATED"
+                      ]
+                    }
+                  },
+                  "resolveSourceUrl": {
+                    "type": "boolean",
+                    "description": "When enabled (default), resolves each delivered record's own permalink via one extra postback per row (~1.5s each - a real, measured cost, see AGENTS.md). Disable for a much faster run when you don't need a process-specific link: source_url falls back to the plain search page, and delivery is charged at the cheaper result-summary rate instead of result. See README 'How much does it cost'.",
+                    "default": true
+                  },
+                  "dateRange": {
+                    "type": "string",
+                    "description": "Restricts the (raw, up-to-maxItems) results to processes whose own 'Fecha de apertura' (scheduled bid-opening date/time) falls within this window ending now. Independent of onlyNew. Note: Fecha de apertura is WHEN BIDS OPEN, not when the process was published on the portal - a currently-open tender is routinely dated in the future relative to when it first appeared, so this answers 'opens/opened in the last N', not 'listed in the last N'. A future-dated process never matches any window until its own opening date falls inside it. See README for detail.",
+                    "enum": [
+                      "24h",
+                      "7d",
+                      "30d"
+                    ]
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run started. Poll GET /actor-runs/{runId} with the returned run id until status is SUCCEEDED, then fetch its dataset items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/actor-runs/{runId}": {
+      "get": {
+        "operationId": "getMendozaComprasMonitorRunStatus",
+        "summary": "Poll the status of a previously started run.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current run status. When status is SUCCEEDED, fetch the dataset via GET /datasets/{datasetId}/items, passing this response's defaultDatasetId field as {datasetId}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "defaultDatasetId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/datasets/{datasetId}/items": {
+      "get": {
+        "operationId": "getMendozaComprasMonitorDatasetItems",
+        "summary": "Fetch the dataset items produced by a completed run.",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "actorSpecification": 1,
+                    "title": "Dataset Schema",
+                    "fields": {
+                      "type": "object",
+                      "properties": {
+                        "numeroProceso": {
+                          "title": "Numero Proceso",
+                          "type": "string",
+                          "description": "e.g. 10201-0001-CDI20"
+                        },
+                        "nombreProceso": {
+                          "title": "Nombre Proceso",
+                          "type": "string"
+                        },
+                        "tipoProceso": {
+                          "title": "Tipo Proceso",
+                          "type": "string",
+                          "description": "e.g. Contratacion Directa, Licitacion Publica"
+                        },
+                        "fechaApertura": {
+                          "title": "Fecha Apertura",
+                          "type": "string"
+                        },
+                        "estado": {
+                          "title": "Estado",
+                          "type": "string"
+                        },
+                        "unidadEjecutora": {
+                          "title": "Unidad Ejecutora",
+                          "type": "string"
+                        },
+                        "servicioAdministrativoFinanciero": {
+                          "title": "Servicio Administrativo Financiero",
+                          "type": "string"
+                        },
+                        "monto": {
+                          "title": "Monto",
+                          "type": "string"
+                        },
+                        "record_id": {
+                          "title": "Record ID",
+                          "type": "string",
+                          "description": "Same value as numeroProceso - stable across runs"
+                        },
+                        "event_type": {
+                          "title": "Event Type",
+                          "type": "string",
+                          "description": "NEW_LISTING (never seen before), STATUS_CHANGE (estado changed since last seen), UPDATED (a field changed, same estado) or UNCHANGED (only when Only new records is off)."
+                        },
+                        "scraped_at": {
+                          "title": "Scraped At",
+                          "type": "string",
+                          "description": "ISO-8601 timestamp of this extraction (same for every record in one run)"
+                        },
+                        "is_new": {
+                          "title": "Is New",
+                          "type": "boolean",
+                          "description": "true if not seen in a prior run (delta mode)"
+                        },
+                        "contentHash": {
+                          "title": "Content Hash",
+                          "type": "string",
+                          "description": "sha1 fingerprint of this record's changeable fields - used to detect UPDATED between runs."
+                        },
+                        "sourceUrlResolved": {
+                          "title": "Source URL Resolved",
+                          "type": "boolean",
+                          "description": "True when source_url is a genuine process-specific permalink; false when it's the generic search-page fallback."
+                        },
+                        "source_url": {
+                          "title": "Source URL",
+                          "type": "string",
+                          "description": "Direct, cookie-independent link to the official process page (or the generic search page - see sourceUrlResolved)"
+                        }
+                      }
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "transformation": {
+                          "fields": [
+                            "numeroProceso",
+                            "nombreProceso",
+                            "tipoProceso",
+                            "estado",
+                            "unidadEjecutora",
+                            "monto",
+                            "is_new"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "Numero",
+                              "format": "text",
+                              "field": "numeroProceso"
+                            },
+                            {
+                              "label": "Nombre",
+                              "format": "text",
+                              "field": "nombreProceso"
+                            },
+                            {
+                              "label": "Tipo",
+                              "format": "text",
+                              "field": "tipoProceso"
+                            },
+                            {
+                              "label": "Estado",
+                              "format": "text",
+                              "field": "estado"
+                            },
+                            {
+                              "label": "Unidad Ejecutora",
+                              "format": "text",
+                              "field": "unidadEjecutora"
+                            },
+                            {
+                              "label": "Monto",
+                              "format": "text",
+                              "field": "monto"
+                            },
+                            {
+                              "label": "Nuevo",
+                              "format": "boolean",
+                              "field": "is_new"
+                            }
+                          ]
+                        }
+                      },
+                      "changes": {
+                        "title": "Status changes & amendments",
+                        "transformation": {
+                          "fields": [
+                            "record_id",
+                            "event_type",
+                            "nombreProceso",
+                            "estado",
+                            "unidadEjecutora",
+                            "monto",
+                            "source_url",
+                            "scraped_at"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "Numero",
+                              "format": "text",
+                              "field": "record_id"
+                            },
+                            {
+                              "label": "Evento",
+                              "format": "text",
+                              "field": "event_type"
+                            },
+                            {
+                              "label": "Nombre",
+                              "format": "text",
+                              "field": "nombreProceso"
+                            },
+                            {
+                              "label": "Estado",
+                              "format": "text",
+                              "field": "estado"
+                            },
+                            {
+                              "label": "Unidad Ejecutora",
+                              "format": "text",
+                              "field": "unidadEjecutora"
+                            },
+                            {
+                              "label": "Monto",
+                              "format": "text",
+                              "field": "monto"
+                            },
+                            {
+                              "label": "URL",
+                              "format": "link",
+                              "field": "source_url"
+                            },
+                            {
+                              "label": "Detectado",
+                              "format": "date",
+                              "field": "scraped_at"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

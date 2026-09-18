@@ -1,0 +1,363 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — KIPRIS Patent & Trademark Status-Change Monitor",
+    "description": "Polls Korea's official KIPRIS Plus Open API for a watchlist of applicants/marks/applications and emits events on new filings and status changes. Extends this operator's USPTO/EPO patent-dispute monitor into a jurisdiction neither source touches. Pay-per-event: billed for what changed.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/9Wg73rplxFqgVq6fY/runs": {
+      "post": {
+        "operationId": "startKiprisPatentTrademarkStatusMonitorRun",
+        "summary": "Start an async run of: Polls Korea's official KIPRIS Plus Open API for a watchlist of applicants/marks/applications and emits events on new filings and status changes. Extends this operator's USPTO/EPO patent-dispute monitor into a jurisdiction neither source touches. Pay-per-event: billed for what changed.",
+        "x-async-pattern-reason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "watchlistApplicants": {
+                    "type": "array",
+                    "description": "Applicant (출원인) legal names, Korean or English, e.g. \"한빛전자 주식회사\" or \"Hanbit Electronics Co., Ltd.\". Matched against KIPRIS Plus's applicant-name search field. Known limitation: Korean legal-entity names have romanization/translation variants, so name matching can miss or double-count filings.",
+                    "default": []
+                  },
+                  "watchlistApplicationNumbers": {
+                    "type": "array",
+                    "description": "Exact KIPO-format application numbers, e.g. \"1020220114820\". Tracks individual filings directly rather than an applicant's whole portfolio.",
+                    "default": []
+                  },
+                  "includePatents": {
+                    "type": "boolean",
+                    "description": "When true (default), patent (특허) filings are included in the watchlist walk.",
+                    "default": true
+                  },
+                  "includeUtilityModels": {
+                    "type": "boolean",
+                    "description": "When true (default), utility model (실용신안) filings are included in the watchlist walk, alongside patents.",
+                    "default": true
+                  },
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "When enabled, persists seen records between runs and only emits NEW_APPLICATION/STATUS_CHANGE/UPDATED events for what actually changed. When disabled, every matched record is delivered every run as BASELINE_SNAPSHOT/SNAPSHOT_NO_DIFF (always free) - the recommended way to validate this Actor's output against your real watchlist before committing to paid events.",
+                    "default": false
+                  },
+                  "maxItemsPerWatchlistEntry": {
+                    "type": "integer",
+                    "description": "Hard cap on how many records KIPRIS Plus may return for a single watchlist entry in one run, applied independently per entry.",
+                    "default": 100,
+                    "minimum": 1
+                  },
+                  "deltaStateName": {
+                    "type": "string",
+                    "description": "Names the Key-Value Store this watchlist's seen-record state is kept in. Run multiple independent watchlists without them sharing or overwriting each other's baseline by giving each a distinct name here.",
+                    "default": "default"
+                  },
+                  "resetState": {
+                    "type": "boolean",
+                    "description": "When true, clears this watchlist's stored seen-record state before running, so the next run re-baselines from scratch (every matched record becomes a fresh, uncharged BASELINE_SNAPSHOT again, subject to onlyNew). Use for testing or recovering a corrupted state store, not routine operation.",
+                    "default": false
+                  },
+                  "byoKiprisServiceKey": {
+                    "type": "string",
+                    "description": "KIPRIS Plus is a paid, registered product license (a flat annual fee, independently confirmed against the official KIPRIS Plus fee page - not free developer registration like USPTO/EPO). This Actor is deliberately bring-your-own-key: there is no operator-held shared key, by design, not as a stopgap - you hold your own KIPRIS Plus subscription and pay KIPRIS directly for API usage, which is what keeps this Actor's own per-event price low. Never logged or persisted beyond this run. Because this Actor's build could not obtain a paid key of its own, the exact field names in a successful KIPRIS Plus response were not independently verified against a real successful call - see README."
+                  },
+                  "requestDelayMs": {
+                    "type": "integer",
+                    "description": "KIPRIS Plus's real per-key rate ceiling has not been independently confirmed - this default trades a slower walk for not trusting an unverified number, the same reasoning this operator's other actors use for an unconfirmed rate limit.",
+                    "default": 500,
+                    "minimum": 0
+                  },
+                  "maxRetries": {
+                    "type": "integer",
+                    "description": "Retry attempts (exponential backoff with jitter) for a 429/5xx response or a network-level failure before a single KIPRIS Plus request is given up on as failed.",
+                    "default": 4,
+                    "minimum": 0
+                  },
+                  "requestTimeoutSecs": {
+                    "type": "integer",
+                    "description": "Aborts a single KIPRIS Plus API request that takes longer than this, so one slow response never stalls the whole run.",
+                    "default": 30,
+                    "minimum": 5
+                  }
+                },
+                "required": [
+                  "byoKiprisServiceKey"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run started. Poll GET /actor-runs/{runId} with the returned run id until status is SUCCEEDED, then fetch its dataset items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/actor-runs/{runId}": {
+      "get": {
+        "operationId": "getKiprisPatentTrademarkStatusMonitorRunStatus",
+        "summary": "Poll the status of a previously started run.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current run status. When status is SUCCEEDED, fetch the dataset via GET /datasets/{datasetId}/items, passing this response's defaultDatasetId field as {datasetId}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "defaultDatasetId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/datasets/{datasetId}/items": {
+      "get": {
+        "operationId": "getKiprisPatentTrademarkStatusMonitorDatasetItems",
+        "summary": "Fetch the dataset items produced by a completed run.",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "actorSpecification": 1,
+                    "fields": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "title": "KIPRIS Patent & Trademark Status-Change Monitor record",
+                      "type": "object",
+                      "properties": {
+                        "record_id": {
+                          "type": "string",
+                          "description": "The application number - KIPRIS's own stable identity key."
+                        },
+                        "event_id": {
+                          "type": "string"
+                        },
+                        "event_type": {
+                          "type": "string",
+                          "enum": [
+                            "BASELINE_SNAPSHOT",
+                            "NEW_APPLICATION",
+                            "STATUS_CHANGE",
+                            "UPDATED",
+                            "SNAPSHOT_NO_DIFF"
+                          ]
+                        },
+                        "scraped_at": {
+                          "type": "string"
+                        },
+                        "is_new": {
+                          "type": "boolean"
+                        },
+                        "source_url": {
+                          "type": "string"
+                        },
+                        "watchlist_entry": {
+                          "type": "object"
+                        },
+                        "application_number": {
+                          "type": "string"
+                        },
+                        "application_date": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "invention_title": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "applicant_name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ip_type": {
+                          "type": "string",
+                          "enum": [
+                            "patent",
+                            "utility_model"
+                          ]
+                        },
+                        "status_code": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "This Actor's own normalized status enum. See README - the exact raw KIPRIS status vocabulary has not been independently confirmed against a real successful response; this build normalizes from the well-documented general Korean patent-prosecution status terms (출원/공개/등록/거절/취하) rather than an unverified raw KIPRIS field name."
+                        },
+                        "status_description_raw": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "changed_fields": {
+                          "type": [
+                            "array",
+                            "null"
+                          ]
+                        },
+                        "content_fingerprint": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "record_id",
+                        "event_id",
+                        "event_type",
+                        "scraped_at",
+                        "is_new",
+                        "source_url",
+                        "application_number",
+                        "ip_type",
+                        "content_fingerprint"
+                      ]
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "description": "One row per delta event, most recent first.",
+                        "transformation": {
+                          "fields": [
+                            "application_number",
+                            "invention_title",
+                            "applicant_name",
+                            "event_type",
+                            "status_code",
+                            "ip_type",
+                            "source_url"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "application_number": {
+                              "label": "Application #",
+                              "format": "text"
+                            },
+                            "invention_title": {
+                              "label": "Title",
+                              "format": "text"
+                            },
+                            "applicant_name": {
+                              "label": "Applicant",
+                              "format": "text"
+                            },
+                            "event_type": {
+                              "label": "Event",
+                              "format": "text"
+                            },
+                            "status_code": {
+                              "label": "Status",
+                              "format": "text"
+                            },
+                            "ip_type": {
+                              "label": "Type",
+                              "format": "text"
+                            },
+                            "source_url": {
+                              "label": "Source",
+                              "format": "link"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

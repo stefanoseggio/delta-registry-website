@@ -1,0 +1,374 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — Page Metadata Extractor - SEO & RAG JSON Feed",
+    "description": "Extract clean, structured metadata from any site: title, meta description, canonical URL, Open Graph tags, H1 and word count. Built-in retries, session rotation and optional pagination keep every crawl resilient. Built for SEO audits and LLM/RAG pipelines - pay only per result, never per wasted run.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/U9fUBHDngX6IyjzzF/runs": {
+      "post": {
+        "operationId": "startPageMetadataExtractorRun",
+        "summary": "Start an async run of: Extract clean, structured metadata from any site: title, meta description, canonical URL, Open Graph tags, H1 and word count. Built-in retries, session rotation and optional pagination keep every crawl resilient. Built for SEO audits and LLM/RAG pipelines - pay only per result, never per wasted run.",
+        "x-async-pattern-reason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "startUrls": {
+                    "type": "array",
+                    "description": "URLs to start crawling from. At least one is required - the Actor charges an actor-start event just for running, so an empty list would bill the caller for zero output.",
+                    "minItems": 1
+                  },
+                  "maxRequestsPerCrawl": {
+                    "type": "integer",
+                    "description": "Hard limit on how many pages this run will fetch, across start URLs, discovered same-site links and pagination.",
+                    "default": 100,
+                    "minimum": 1
+                  },
+                  "paginationSelector": {
+                    "type": "string",
+                    "description": "Optional CSS selector for a next-page link, e.g. a[rel=next] or .pagination .next. When set, the crawler follows it up to Max pagination depth pages per start URL, on top of normal same-site link discovery."
+                  },
+                  "maxPaginationDepth": {
+                    "type": "integer",
+                    "description": "Maximum number of paginated pages to follow per start URL when Pagination selector is set. Ignored otherwise.",
+                    "default": 3,
+                    "minimum": 0
+                  },
+                  "onlyChanged": {
+                    "type": "boolean",
+                    "description": "When enabled, a page is still crawled (its links are still followed) but is only added to the dataset - and charged - if it's the first time this exact URL has been scraped, or its extracted metadata differs from the last time this Actor scraped it. Pages with unchanged metadata are skipped. Useful for scheduled re-runs where you only want to pay for what's new or different since the last run.",
+                    "default": false
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run started. Poll GET /actor-runs/{runId} with the returned run id until status is SUCCEEDED, then fetch its dataset items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/actor-runs/{runId}": {
+      "get": {
+        "operationId": "getPageMetadataExtractorRunStatus",
+        "summary": "Poll the status of a previously started run.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current run status. When status is SUCCEEDED, fetch the dataset via GET /datasets/{datasetId}/items, passing this response's defaultDatasetId field as {datasetId}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "defaultDatasetId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/datasets/{datasetId}/items": {
+      "get": {
+        "operationId": "getPageMetadataExtractorDatasetItems",
+        "summary": "Fetch the dataset items produced by a completed run.",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "actorSpecification": 1,
+                    "title": "Dataset Schema",
+                    "fields": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "title": "URL",
+                          "type": "string",
+                          "description": "Page URL"
+                        },
+                        "title": {
+                          "title": "Title",
+                          "type": "string",
+                          "description": "Page title tag"
+                        },
+                        "metaDescription": {
+                          "title": "Meta description",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "meta name=description content"
+                        },
+                        "canonicalUrl": {
+                          "title": "Canonical URL",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "link rel=canonical href"
+                        },
+                        "ogTitle": {
+                          "title": "OG title",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "og:title meta content"
+                        },
+                        "ogImage": {
+                          "title": "OG image",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "og:image meta content"
+                        },
+                        "language": {
+                          "title": "Language",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "html lang attribute"
+                        },
+                        "h1": {
+                          "title": "H1",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "First h1 text"
+                        },
+                        "wordCount": {
+                          "title": "Word count",
+                          "type": "integer",
+                          "description": "Approximate visible body word count"
+                        },
+                        "statusCode": {
+                          "title": "Status code",
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "HTTP status code of the response"
+                        },
+                        "crawlDepth": {
+                          "title": "Crawl depth",
+                          "type": "integer",
+                          "description": "Link-hops from the nearest start URL"
+                        },
+                        "scrapedAt": {
+                          "title": "Scraped at",
+                          "type": "string",
+                          "description": "ISO timestamp of extraction"
+                        },
+                        "eventType": {
+                          "title": "Event type",
+                          "type": "string",
+                          "enum": [
+                            "NEW_URL",
+                            "CONTENT_CHANGED",
+                            "UNCHANGED"
+                          ],
+                          "description": "NEW_URL if this exact URL was never scraped before, CONTENT_CHANGED if its metadata differs from the last scrape, UNCHANGED otherwise. No status/closure concept applies - this Actor crawls caller-supplied URLs, not a discoverable listing registry."
+                        },
+                        "contentHash": {
+                          "title": "Content hash",
+                          "type": "string",
+                          "description": "Fingerprint over the page's extracted content fields, used to detect CONTENT_CHANGED across runs."
+                        },
+                        "previousScrapedAt": {
+                          "title": "Previously scraped at",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "scrapedAt from the last time this URL was scraped, or null if this is the first time (NEW_URL)."
+                        }
+                      }
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "transformation": {
+                          "fields": [
+                            "title",
+                            "url",
+                            "statusCode",
+                            "wordCount",
+                            "scrapedAt"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "Title",
+                              "format": "text",
+                              "field": "title"
+                            },
+                            {
+                              "label": "URL",
+                              "format": "link",
+                              "field": "url"
+                            },
+                            {
+                              "label": "Status",
+                              "format": "text",
+                              "field": "statusCode"
+                            },
+                            {
+                              "label": "Words",
+                              "format": "number",
+                              "field": "wordCount"
+                            },
+                            {
+                              "label": "Scraped At",
+                              "format": "date",
+                              "field": "scrapedAt"
+                            }
+                          ]
+                        }
+                      },
+                      "changes": {
+                        "title": "Change detection",
+                        "transformation": {
+                          "fields": [
+                            "url",
+                            "eventType",
+                            "previousScrapedAt",
+                            "scrapedAt",
+                            "contentHash"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "URL",
+                              "format": "link",
+                              "field": "url"
+                            },
+                            {
+                              "label": "Event",
+                              "format": "text",
+                              "field": "eventType"
+                            },
+                            {
+                              "label": "Previously scraped at",
+                              "format": "date",
+                              "field": "previousScrapedAt"
+                            },
+                            {
+                              "label": "Scraped at",
+                              "format": "date",
+                              "field": "scrapedAt"
+                            },
+                            {
+                              "label": "Content hash",
+                              "format": "text",
+                              "field": "contentHash"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

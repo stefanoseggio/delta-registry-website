@@ -1,0 +1,380 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — ClinicalTrials.gov + FDA Orange Book - Trial Delta API",
+    "description": "Delta-tracks ClinicalTrials.gov trial status changes (RECRUITING, COMPLETED, TERMINATED) and FDA Orange Book patent/exclusivity data against verified live public APIs. Fingerprint-based diffing delivers only new or changed records per run, with full-jitter retry and strict ISO 8601 timestamps.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/PkYgfW33Sh6teGXUX/runs": {
+      "post": {
+        "operationId": "startActor24ClinicalTrialsDeltaEngineRun",
+        "summary": "Start an async run of: Delta-tracks ClinicalTrials.gov trial status changes (RECRUITING, COMPLETED, TERMINATED) and FDA Orange Book patent/exclusivity data against verified live public APIs. Fingerprint-based diffing delivers only new or changed records per run, with full-jitter retry and strict ISO 8601 timestamps.",
+        "x-async-pattern-reason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sources": {
+                    "type": "array",
+                    "description": "clinicaltrials = ClinicalTrials.gov API v2 trial-status delta tracking. orangebook = FDA Orange Book patent/exclusivity delta tracking.",
+                    "default": [
+                      "clinicaltrials"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "clinicaltrials",
+                        "orangebook"
+                      ]
+                    }
+                  },
+                  "condition": {
+                    "type": "string",
+                    "description": "Passed to ClinicalTrials.gov's query.cond parameter, e.g. 'diabetes'. Leave empty to walk all trials matching other filters (not recommended without a narrow maxPages)."
+                  },
+                  "orangeBookQuery": {
+                    "type": "string",
+                    "description": "Filter applied to the Orange Book query - an ingredient name or application number."
+                  },
+                  "maxPages": {
+                    "type": "integer",
+                    "description": "Hard cap on the number of 100-record ClinicalTrials.gov API pages walked per run.",
+                    "default": 20,
+                    "minimum": 1
+                  },
+                  "onlyChanged": {
+                    "type": "boolean",
+                    "description": "Returns only trials/products that are new or whose tracked fields (overall_status, patent/exclusivity data) changed since a previous run. State persists in a named key-value store unique to this actor across scheduled runs.",
+                    "default": false
+                  },
+                  "maxRetries": {
+                    "type": "integer",
+                    "description": "Maximum retry attempts (full-jitter exponential backoff) for a single page/extract fetch before it is dead-lettered.",
+                    "default": 5,
+                    "minimum": 0
+                  },
+                  "fdaApiKey": {
+                    "type": "string",
+                    "description": "Optional. openFDA allows 1,000 requests/day without a key (240/min) or 120,000/day with a free key (still 240/min). Only matters for high-volume Orange Book runs - the ClinicalTrials.gov source does not use this key."
+                  }
+                },
+                "required": [
+                  "sources"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run started. Poll GET /actor-runs/{runId} with the returned run id until status is SUCCEEDED, then fetch its dataset items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/actor-runs/{runId}": {
+      "get": {
+        "operationId": "getActor24ClinicalTrialsDeltaEngineRunStatus",
+        "summary": "Poll the status of a previously started run.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current run status. When status is SUCCEEDED, fetch the dataset via GET /datasets/{datasetId}/items, passing this response's defaultDatasetId field as {datasetId}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "defaultDatasetId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/datasets/{datasetId}/items": {
+      "get": {
+        "operationId": "getActor24ClinicalTrialsDeltaEngineDatasetItems",
+        "summary": "Fetch the dataset items produced by a completed run.",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "actorSpecification": 1,
+                    "title": "Clinical Trial / Orange Book Delta Record",
+                    "description": "One item per ClinicalTrials.gov trial-status delta event or FDA Orange Book patent/exclusivity delta event.",
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "properties": {
+                        "record_id": {
+                          "type": "string",
+                          "title": "Record ID",
+                          "description": "NCT id for a trial record, or applNo:productNo for an Orange Book record."
+                        },
+                        "event_type": {
+                          "type": "string",
+                          "enum": [
+                            "NEW_TRIAL",
+                            "STATUS_CHANGE",
+                            "NEW_LISTING",
+                            "PATENT_EXCLUSIVITY_CHANGE",
+                            "SNAPSHOT_NO_DIFF"
+                          ],
+                          "title": "Event type",
+                          "description": "NEW_TRIAL/STATUS_CHANGE apply to ClinicalTrials.gov records. NEW_LISTING/PATENT_EXCLUSIVITY_CHANGE apply to Orange Book records. SNAPSHOT_NO_DIFF only delivered when onlyChanged is off."
+                        },
+                        "scraped_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$",
+                          "title": "Scraped at (UTC)"
+                        },
+                        "is_new": {
+                          "type": "boolean",
+                          "title": "Is new"
+                        },
+                        "source_url": {
+                          "type": "string",
+                          "title": "Source URL"
+                        },
+                        "data_source": {
+                          "type": "string",
+                          "enum": [
+                            "clinicaltrials-gov",
+                            "openfda-orangebook"
+                          ],
+                          "title": "Data source"
+                        },
+                        "nct_id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "NCT ID",
+                          "description": "Present on ClinicalTrials.gov records only."
+                        },
+                        "brief_title": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Brief title"
+                        },
+                        "overall_status": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Overall status",
+                          "description": "The trial's real current status per ClinicalTrials.gov's own controlled vocabulary (e.g. RECRUITING, ACTIVE_NOT_RECRUITING, COMPLETED, TERMINATED, WITHDRAWN) - not remapped to a fleet-wide generic enum, since the source's own vocabulary is already precise."
+                        },
+                        "previous_status": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Previous status",
+                          "description": "The status value seen on the prior run this actor observed a change from - null on a NEW_TRIAL or a plain (onlyChanged=false) run's first-seen record."
+                        },
+                        "last_update_post_date": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Last update posted date"
+                        },
+                        "status_verified_date": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Status verified date"
+                        },
+                        "lead_sponsor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Lead sponsor"
+                        },
+                        "conditions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "title": "Conditions"
+                        },
+                        "phases": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "title": "Phases"
+                        },
+                        "application_number": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Application number",
+                          "description": "Present on Orange Book records only."
+                        },
+                        "product_number": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Product number"
+                        },
+                        "trade_name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Trade name"
+                        },
+                        "ingredient": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Ingredient"
+                        },
+                        "te_code": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "TE code"
+                        },
+                        "patent_data": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "title": "Patent data",
+                          "description": "Raw patent/exclusivity sub-object as openFDA provides it - not flattened, since patent data can carry a variable number of entries per product."
+                        }
+                      },
+                      "required": [
+                        "record_id",
+                        "event_type",
+                        "scraped_at",
+                        "is_new",
+                        "source_url",
+                        "data_source"
+                      ]
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Delta Events",
+                        "transformation": {
+                          "fields": [
+                            "data_source",
+                            "nct_id",
+                            "application_number",
+                            "overall_status",
+                            "event_type",
+                            "scraped_at"
+                          ]
+                        },
+                        "display": {
+                          "component": "table"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

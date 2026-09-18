@@ -1,0 +1,422 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — Entre Rios Argentina Licitaciones - Tender Delta API",
+    "description": "Extracts the full public tender backlog of the Province of Entre Rios, Argentina's Unidad Central de Contrataciones - 5,505 records verified live, back to at least 2004 - with organism, objeto, and status detail, and flags new, status-changed, and closed tenders across scheduled runs.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/oiXeFzZGlIQ6mKgoo/runs": {
+      "post": {
+        "operationId": "startEntreriosComprasMonitorRun",
+        "summary": "Start an async run of: Extracts the full public tender backlog of the Province of Entre Rios, Argentina's Unidad Central de Contrataciones - 5,505 records verified live, back to at least 2004 - with organism, objeto, and status detail, and flags new, status-changed, and closed tenders across scheduled runs.",
+        "x-async-pattern-reason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "estado": {
+                    "type": "string",
+                    "description": "Filter by process status. Leave blank (default) to pull every status in one request - the site's own union of all 4, verified live to be far larger than any single status alone.",
+                    "default": "",
+                    "enum": [
+                      "",
+                      "1",
+                      "2",
+                      "3",
+                      "4"
+                    ]
+                  },
+                  "tipoLicitacion": {
+                    "type": "string",
+                    "description": "Filter by contracting procedure type. Leave blank for all types.",
+                    "default": "",
+                    "enum": [
+                      "",
+                      "1",
+                      "2",
+                      "3",
+                      "4"
+                    ]
+                  },
+                  "organismo": {
+                    "type": "string",
+                    "description": "Filter by issuing organism. Leave blank for all organisms.",
+                    "default": "",
+                    "enum": [
+                      "",
+                      "1",
+                      "3",
+                      "4",
+                      "5",
+                      "6",
+                      "7",
+                      "8",
+                      "9"
+                    ]
+                  },
+                  "anio": {
+                    "type": "string",
+                    "description": "Filter by year, e.g. \"2025\". Leave blank for all years (data goes back to at least 2004).",
+                    "default": ""
+                  },
+                  "palabra": {
+                    "type": "string",
+                    "description": "Free-text keyword filter, matched server-side the same way the site's own \"Palabra\" search box works.",
+                    "default": ""
+                  },
+                  "maxItems": {
+                    "type": "integer",
+                    "description": "Hard cap on the number of tenders returned this run. The full unfiltered backlog is over 5000 rows (verified live) - narrow with the filters above or raise this cap to pull all of it.",
+                    "default": 1000,
+                    "minimum": 1
+                  },
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "For recurring/scheduled runs: return only tenders that are new, changed estado, or closed since a prior run of this actor (tracked in a named key-value store scoped to this actor, so it survives between scheduled runs). This source is fetched as a single unfiltered POST covering the entire backlog rather than genuine, reliably newest-first pagination (verified live - see AGENTS.md), so enabling this does NOT reduce fetch time or request volume: the full backlog is still fetched every run either way, and this only changes which records get pushed to the dataset afterward.",
+                    "default": false
+                  },
+                  "eventTypes": {
+                    "type": "array",
+                    "description": "Which kinds of change to deliver when 'Only new records' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = seen before, estado changed - free to detect, record_id's own hash excludes estado on purpose. CLOSED = a previously-seen record_id is absent from this run's fetch - only computed on an UNFILTERED run (no status/type/organism/year/keyword filter set), since a filtered run's fetch is a subset of the register, not the whole thing; skipped otherwise.",
+                    "default": [
+                      "NEW_LISTING",
+                      "STATUS_CHANGE",
+                      "CLOSED"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "NEW_LISTING",
+                        "STATUS_CHANGE",
+                        "CLOSED"
+                      ]
+                    }
+                  },
+                  "dateRange": {
+                    "type": "string",
+                    "description": "Filters to a source's own natural per-record date field, where one of this portfolio's monitor actors has one. This source (Entre Rios' tender listing) publishes NO per-record date field anywhere - not on the listing, not on any detail page (there isn't one) - verified live against the real page (see AGENTS.md). Setting this has NO effect on the results returned; the actor logs a warning instead of silently applying a misleading filter. Present only for input-shape consistency with the rest of the portfolio.",
+                    "default": "",
+                    "enum": [
+                      "",
+                      "24h",
+                      "7d",
+                      "30d"
+                    ]
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run started. Poll GET /actor-runs/{runId} with the returned run id until status is SUCCEEDED, then fetch its dataset items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/actor-runs/{runId}": {
+      "get": {
+        "operationId": "getEntreriosComprasMonitorRunStatus",
+        "summary": "Poll the status of a previously started run.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current run status. When status is SUCCEEDED, fetch the dataset via GET /datasets/{datasetId}/items, passing this response's defaultDatasetId field as {datasetId}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "defaultDatasetId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/datasets/{datasetId}/items": {
+      "get": {
+        "operationId": "getEntreriosComprasMonitorDatasetItems",
+        "summary": "Fetch the dataset items produced by a completed run.",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "actorSpecification": 1,
+                    "title": "Dataset Schema",
+                    "fields": {
+                      "type": "object",
+                      "properties": {
+                        "record_id": {
+                          "title": "Record ID",
+                          "type": "string",
+                          "description": "Stable hash of procedimiento+objeto+destino+organismo - the site has no native row id. Deliberately excludes estado, so the same procedure keeps this id across status changes."
+                        },
+                        "procedimiento": {
+                          "title": "Procedimiento",
+                          "type": "string"
+                        },
+                        "anioProcedimiento": {
+                          "title": "Anio",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "objeto": {
+                          "title": "Objeto",
+                          "type": "string"
+                        },
+                        "destino": {
+                          "title": "Destino",
+                          "type": "string"
+                        },
+                        "organismo": {
+                          "title": "Organismo",
+                          "type": "string"
+                        },
+                        "estado": {
+                          "title": "Estado",
+                          "type": "string"
+                        },
+                        "event_type": {
+                          "title": "Event type",
+                          "type": "string",
+                          "description": "NEW_LISTING (never seen before), STATUS_CHANGE (estado changed since last seen), UNCHANGED (only when Only new records is off) or CLOSED (no longer in the register)."
+                        },
+                        "previousEstado": {
+                          "title": "Previous Estado",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Set only when event_type=STATUS_CHANGE: the estado this record_id was last seen under."
+                        },
+                        "scraped_at": {
+                          "title": "Scraped at",
+                          "type": "string"
+                        },
+                        "is_new": {
+                          "title": "Is new",
+                          "type": "boolean",
+                          "description": "True if record_id was not in the persisted seen-set when this run started."
+                        },
+                        "source_url": {
+                          "title": "Source URL",
+                          "type": "string",
+                          "description": "The shared search-listing page - this source has no per-tender detail link."
+                        }
+                      }
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "transformation": {
+                          "fields": [
+                            "procedimiento",
+                            "anioProcedimiento",
+                            "objeto",
+                            "destino",
+                            "organismo",
+                            "estado",
+                            "is_new",
+                            "scraped_at"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "Procedimiento",
+                              "format": "text",
+                              "field": "procedimiento"
+                            },
+                            {
+                              "label": "Anio",
+                              "format": "text",
+                              "field": "anioProcedimiento"
+                            },
+                            {
+                              "label": "Objeto",
+                              "format": "text",
+                              "field": "objeto"
+                            },
+                            {
+                              "label": "Destino",
+                              "format": "text",
+                              "field": "destino"
+                            },
+                            {
+                              "label": "Organismo",
+                              "format": "text",
+                              "field": "organismo"
+                            },
+                            {
+                              "label": "Estado",
+                              "format": "text",
+                              "field": "estado"
+                            },
+                            {
+                              "label": "Is new",
+                              "format": "boolean",
+                              "field": "is_new"
+                            },
+                            {
+                              "label": "Scraped at",
+                              "format": "date",
+                              "field": "scraped_at"
+                            }
+                          ]
+                        }
+                      },
+                      "changes": {
+                        "title": "Status changes & closures",
+                        "transformation": {
+                          "fields": [
+                            "record_id",
+                            "event_type",
+                            "previousEstado",
+                            "estado",
+                            "organismo",
+                            "objeto",
+                            "scraped_at"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "ID",
+                              "format": "text",
+                              "field": "record_id"
+                            },
+                            {
+                              "label": "Evento",
+                              "format": "text",
+                              "field": "event_type"
+                            },
+                            {
+                              "label": "Estado anterior",
+                              "format": "text",
+                              "field": "previousEstado"
+                            },
+                            {
+                              "label": "Estado actual",
+                              "format": "text",
+                              "field": "estado"
+                            },
+                            {
+                              "label": "Organismo",
+                              "format": "text",
+                              "field": "organismo"
+                            },
+                            {
+                              "label": "Objeto",
+                              "format": "text",
+                              "field": "objeto"
+                            },
+                            {
+                              "label": "Detectado",
+                              "format": "date",
+                              "field": "scraped_at"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

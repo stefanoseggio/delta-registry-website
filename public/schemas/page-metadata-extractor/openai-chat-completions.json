@@ -1,0 +1,59 @@
+{
+  "type": "function",
+  "function": {
+    "name": "page-metadata-extractor",
+    "description": "Extract clean, structured metadata from any site: title, meta description, canonical URL, Open Graph tags, H1 and word count. Built-in retries, session rotation and optional pagination keep every crawl resilient. Built for SEO audits and LLM/RAG pipelines - pay only per result, never per wasted run.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "startUrls": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "URLs to start crawling from. At least one is required - the Actor charges an actor-start event just for running, so an empty list would bill the caller for zero output.",
+          "minItems": 1
+        },
+        "maxRequestsPerCrawl": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Hard limit on how many pages this run will fetch, across start URLs, discovered same-site links and pagination. Default 100 if omitted.",
+          "minimum": 1
+        },
+        "paginationSelector": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional CSS selector for a next-page link, e.g. a[rel=next] or .pagination .next. When set, the crawler follows it up to Max pagination depth pages per start URL, on top of normal same-site link discovery."
+        },
+        "maxPaginationDepth": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Maximum number of paginated pages to follow per start URL when Pagination selector is set. Ignored otherwise. Default 3 if omitted.",
+          "minimum": 0
+        },
+        "onlyChanged": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "When enabled, a page is still crawled (its links are still followed) but is only added to the dataset - and charged - if it's the first time this exact URL has been scraped, or its extracted metadata differs from the last time this Actor scraped it. Pages with unchanged metadata are skipped. Useful for scheduled re-runs where you only want to pay for what's new or different since the last run. Default false if omitted."
+        }
+      },
+      "required": [
+        "startUrls",
+        "maxRequestsPerCrawl",
+        "paginationSelector",
+        "maxPaginationDepth",
+        "onlyChanged"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

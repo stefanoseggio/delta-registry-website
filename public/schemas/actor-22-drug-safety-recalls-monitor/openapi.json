@@ -1,0 +1,617 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — FDA openFDA + EMA DHPC - Drug Recall Delta Feed",
+    "description": "Combines the FDA's openFDA drug enforcement API and the EMA's DHPC safety-alert feed into one normalized 18-field schema, tagged by jurisdiction and agency, sorted newest-first, with a mandatory regulatory-data disclaimer on every record. Delta mode flags status changes across scheduled runs.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/HJZvKxFUpZop6gIQ3/runs": {
+      "post": {
+        "operationId": "startActor22DrugSafetyRecallsMonitorRun",
+        "summary": "Start an async run of: Combines the FDA's openFDA drug enforcement API and the EMA's DHPC safety-alert feed into one normalized 18-field schema, tagged by jurisdiction and agency, sorted newest-first, with a mandatory regulatory-data disclaimer on every record. Delta mode flags status changes across scheduled runs.",
+        "x-async-pattern-reason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sources": {
+                    "type": "array",
+                    "description": "FDA = US openFDA drug enforcement (recall) API. EMA = EU Direct Healthcare Professional Communications (DHPC) safety-alert JSON export. Both are independent regulator-native feeds with different fields, combined into one Unified Master Schema stream.",
+                    "default": [
+                      "fda",
+                      "ema"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "fda",
+                        "ema"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "maxItemsPerSource": {
+                    "type": "integer",
+                    "description": "Hard cap on how many records to return per selected regulator this run, applied independently to FDA and EMA, both sorted newest-first. openFDA's own API caps a single request at 1000 results (verified live 2026-09-07); values above 1000 are paginated automatically via skip.",
+                    "default": 100,
+                    "minimum": 1
+                  },
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "When enabled, persists a content fingerprint per record between runs (in this actor's own named key-value store) and returns only records that are new since the last run OR whose status (FDA status / EMA regulatory_outcome) or other tracked fields changed since they were last seen - records that are byte-for-byte identical to last time are skipped. Recommended for recurring monitoring, so a status change on an already-known recall (e.g. Ongoing -> Terminated) is still surfaced, not silently suppressed just because the recall itself isn't brand new. Leave off for a full one-off extraction of every currently-visible record.",
+                    "default": false
+                  },
+                  "dateRange": {
+                    "type": "string",
+                    "description": "Optionally restrict results to records whose own date field (FDA report_date; EMA dissemination_date) falls within this window. Independent of onlyNew.",
+                    "enum": [
+                      "24h",
+                      "7d",
+                      "30d"
+                    ]
+                  },
+                  "fdaClassification": {
+                    "type": "array",
+                    "description": "Restrict FDA results to one or more FDA recall classification tiers (Class I = most severe / reasonable probability of serious harm or death, down to Class III = least severe). Ignored for EMA records, which use their own dhpc_type taxonomy instead (no equivalent tiering in the DHPC feed).",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "Class I",
+                        "Class II",
+                        "Class III"
+                      ]
+                    }
+                  },
+                  "fdaApiKey": {
+                    "type": "string",
+                    "description": "Optional. Without a key, openFDA allows 240 requests/minute and 1,000 requests/day per IP address (verified live against https://open.fda.gov/apis/authentication/ on 2026-09-07). With a free key (open.fda.gov signup), the daily cap rises to 120,000 requests/day per key, same 240/minute. This actor's own request volume is trivially within the unauthenticated limit for normal use; the key is offered only for high-frequency scheduled runs."
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run started. Poll GET /actor-runs/{runId} with the returned run id until status is SUCCEEDED, then fetch its dataset items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/actor-runs/{runId}": {
+      "get": {
+        "operationId": "getActor22DrugSafetyRecallsMonitorRunStatus",
+        "summary": "Poll the status of a previously started run.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current run status. When status is SUCCEEDED, fetch the dataset via GET /datasets/{datasetId}/items, passing this response's defaultDatasetId field as {datasetId}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "defaultDatasetId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/datasets/{datasetId}/items": {
+      "get": {
+        "operationId": "getActor22DrugSafetyRecallsMonitorDatasetItems",
+        "summary": "Fetch the dataset items produced by a completed run.",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "actorSpecification": 1,
+                    "title": "Dataset Schema",
+                    "fields": {
+                      "type": "object",
+                      "properties": {
+                        "recordSource": {
+                          "title": "Record Source",
+                          "type": "string",
+                          "description": "fda_enforcement or ema_dhpc - which regulator feed produced this record"
+                        },
+                        "record_id": {
+                          "title": "Record ID",
+                          "type": "string",
+                          "description": "Stable, source-prefixed id (fda:<recall_number> or ema:<slug>:<dissemination_date>) - unique within this actor's own record space"
+                        },
+                        "event_type": {
+                          "title": "Event Type",
+                          "type": "string",
+                          "description": "First seen: SANCTION (FDA recall/enforcement classification) or NEW_LISTING (EMA newly published safety communication). On a repeat sighting of an already-known record: STATUS_CHANGE (FDA status, or EMA regulatory_outcome, differs from last time this actor saw it), UPDATED (some other tracked field differs but status/outcome did not), or SNAPSHOT_NO_DIFF (identical to the last time it was seen). No CLOSED event - neither source is known to remove historical records, and this actor's bounded newest-first fetch does not attempt a complete-census walk of either register."
+                        },
+                        "scraped_at": {
+                          "title": "Scraped At",
+                          "type": "string",
+                          "description": "ISO-8601 timestamp of this extraction"
+                        },
+                        "is_new": {
+                          "title": "Is New",
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "description": "true if not seen in a prior run (delta mode, this actor's own key-value store)"
+                        },
+                        "source_url": {
+                          "title": "Source URL",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "recipient_or_defendant_name": {
+                          "title": "Recipient or Defendant Name",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA: recalling_firm. EMA: name_of_medicine (no marketing-authorisation-holder/company field exists in the DHPC feed, so the medicine itself is the named subject - never guessed)."
+                        },
+                        "entity_identifier_native": {
+                          "title": "Entity Identifier (native)",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA: event_id. EMA: atc_code_human (WHO ATC classification code)."
+                        },
+                        "value_native": {
+                          "title": "Value (native)",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Always null - neither source carries a monetary value field"
+                        },
+                        "value_currency": {
+                          "title": "Value Currency",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Always null"
+                        },
+                        "value_usd_normalized": {
+                          "title": "Value (USD normalized)",
+                          "type": [
+                            "number",
+                            "null"
+                          ],
+                          "description": "Always null"
+                        },
+                        "effective_date_iso": {
+                          "title": "Effective Date (ISO)",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA: recall_initiation_date. EMA: dissemination_date."
+                        },
+                        "publish_date_iso": {
+                          "title": "Publish Date (ISO)",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA: report_date. EMA: first_published_date."
+                        },
+                        "category_or_type": {
+                          "title": "Category or Type",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA: product_type. EMA: dhpc_type."
+                        },
+                        "status_or_estado": {
+                          "title": "Status",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA: status (Ongoing/Terminated/Completed). EMA: regulatory_outcome (often empty -> null)."
+                        },
+                        "awarding_or_regulating_agency": {
+                          "title": "Regulating Agency",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "jurisdiction": {
+                          "title": "Jurisdiction",
+                          "type": "string",
+                          "description": "US or EU"
+                        },
+                        "source_document_url": {
+                          "title": "Source Document URL",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Always null for both sources - neither feed exposes a separate per-record document/PDF URL distinct from source_url"
+                        },
+                        "reference_number": {
+                          "title": "Reference Number",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA: recall_number. EMA: procedure_number (often empty -> null)."
+                        },
+                        "regulatoryDataDisclaimer": {
+                          "title": "Regulatory Data Disclaimer",
+                          "type": "string",
+                          "description": "Mandatory, non-removable on every record: states the data is sourced directly from the named regulator's own public feed, is not independently medically verified by this actor, and is not intended as clinical or consumer medical advice."
+                        },
+                        "classification": {
+                          "title": "FDA Classification",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA only: Class I/II/III severity tier"
+                        },
+                        "productDescription": {
+                          "title": "Product Description",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA only"
+                        },
+                        "reasonForRecall": {
+                          "title": "Reason For Recall",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA only"
+                        },
+                        "recallingFirm": {
+                          "title": "Recalling Firm",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA only"
+                        },
+                        "distributionPattern": {
+                          "title": "Distribution Pattern",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA only"
+                        },
+                        "voluntaryMandated": {
+                          "title": "Voluntary or Mandated",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA only"
+                        },
+                        "recallNumber": {
+                          "title": "Recall Number",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA only"
+                        },
+                        "eventId": {
+                          "title": "FDA Event ID",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA only"
+                        },
+                        "city": {
+                          "title": "City",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA only"
+                        },
+                        "state": {
+                          "title": "State",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA only"
+                        },
+                        "country": {
+                          "title": "Country",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "FDA only"
+                        },
+                        "nameOfMedicine": {
+                          "title": "Name of Medicine",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "EMA only"
+                        },
+                        "activeSubstances": {
+                          "title": "Active Substances",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "EMA only"
+                        },
+                        "dhpcType": {
+                          "title": "DHPC Type",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "EMA only"
+                        },
+                        "atcCodeHuman": {
+                          "title": "ATC Code (human)",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "EMA only"
+                        },
+                        "therapeuticAreaMesh": {
+                          "title": "Therapeutic Area (MeSH)",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "EMA only"
+                        },
+                        "procedureNumber": {
+                          "title": "Procedure Number",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "EMA only"
+                        },
+                        "regulatoryOutcome": {
+                          "title": "Regulatory Outcome",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "EMA only"
+                        }
+                      }
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "transformation": {
+                          "fields": [
+                            "recordSource",
+                            "record_id",
+                            "event_type",
+                            "recipient_or_defendant_name",
+                            "category_or_type",
+                            "status_or_estado",
+                            "awarding_or_regulating_agency",
+                            "jurisdiction",
+                            "effective_date_iso",
+                            "reference_number",
+                            "regulatoryDataDisclaimer"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "Source",
+                              "format": "text",
+                              "field": "recordSource"
+                            },
+                            {
+                              "label": "Record ID",
+                              "format": "text",
+                              "field": "record_id"
+                            },
+                            {
+                              "label": "Event Type",
+                              "format": "text",
+                              "field": "event_type"
+                            },
+                            {
+                              "label": "Subject",
+                              "format": "text",
+                              "field": "recipient_or_defendant_name"
+                            },
+                            {
+                              "label": "Category/Type",
+                              "format": "text",
+                              "field": "category_or_type"
+                            },
+                            {
+                              "label": "Status",
+                              "format": "text",
+                              "field": "status_or_estado"
+                            },
+                            {
+                              "label": "Agency",
+                              "format": "text",
+                              "field": "awarding_or_regulating_agency"
+                            },
+                            {
+                              "label": "Jurisdiction",
+                              "format": "text",
+                              "field": "jurisdiction"
+                            },
+                            {
+                              "label": "Effective Date",
+                              "format": "text",
+                              "field": "effective_date_iso"
+                            },
+                            {
+                              "label": "Reference #",
+                              "format": "text",
+                              "field": "reference_number"
+                            }
+                          ]
+                        }
+                      },
+                      "changes": {
+                        "title": "Change detection",
+                        "transformation": {
+                          "fields": [
+                            "recordSource",
+                            "record_id",
+                            "event_type",
+                            "status_or_estado",
+                            "scraped_at",
+                            "is_new"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "Source",
+                              "format": "text",
+                              "field": "recordSource"
+                            },
+                            {
+                              "label": "Record ID",
+                              "format": "text",
+                              "field": "record_id"
+                            },
+                            {
+                              "label": "Event",
+                              "format": "text",
+                              "field": "event_type"
+                            },
+                            {
+                              "label": "Status",
+                              "format": "text",
+                              "field": "status_or_estado"
+                            },
+                            {
+                              "label": "Scraped At",
+                              "format": "date",
+                              "field": "scraped_at"
+                            },
+                            {
+                              "label": "Is New",
+                              "format": "boolean",
+                              "field": "is_new"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

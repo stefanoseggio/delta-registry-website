@@ -1,0 +1,177 @@
+{
+  "name": "santafe-compras-monitor",
+  "description": "Scrape and monitor every public tender of Santa Fe Province, Argentina: licitaciones, concursos and contrataciones directas of ministries, hospitals and SAMCOs, with buyer, budget, deadlines, rubros, expediente and pliego/circular/acta PDF links. Delta mode flags new, changed and amended tenders.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "estados": {
+        "type": "array",
+        "description": "Which lists to read. AP = Para Apertura (published, offers not yet opened - where every new tender appears first), ET = En Trámite (opened, being evaluated - actas and preadjudicación land here), CO = Concluida (finished). Each is a separate server-side query.",
+        "default": [
+          "AP"
+        ],
+        "items": {
+          "type": "string",
+          "enum": [
+            "AP",
+            "ET",
+            "CO"
+          ]
+        },
+        "minItems": 1
+      },
+      "anio": {
+        "type": "integer",
+        "description": "Year of the process number (anioGestion). The site's own UI always applies the current year; leave empty for all years (2000 onwards).",
+        "minimum": 2000
+      },
+      "objeto": {
+        "type": "string",
+        "description": "Case-insensitive phrase search over the tender subject, e.g. 'limpieza', 'medicamentos', 'servicio de vigilancia'. Word order matters ('servicio de limpieza' matches, 'limpieza servicio' does not)."
+      },
+      "tipoGestion": {
+        "type": "array",
+        "description": "One server-side query per selected type. Codes are the site's own (L = Licitación Pública, P = Licitación Privada, T = Contratación Directa, ...).",
+        "default": [],
+        "items": {
+          "type": "string",
+          "enum": [
+            "L",
+            "P",
+            "A",
+            "T",
+            "B",
+            "V",
+            "C",
+            "I",
+            "D",
+            "S",
+            "X",
+            "Y",
+            "O"
+          ]
+        }
+      },
+      "tipoModalidad": {
+        "type": "string",
+        "description": "Contracting modality code from the site.",
+        "enum": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "9999"
+        ]
+      },
+      "comprador": {
+        "type": "string",
+        "description": "The organism running the procedure, as its site id (idOrganismoLey12510, e.g. 27) or a distinctive part of its name (e.g. 'Administración Provincial de Impuestos', 'Hospital Cullen'). Names are matched against the site's own organism list at run start; an ambiguous name fails with the candidates listed."
+      },
+      "solicitante": {
+        "type": "string",
+        "description": "The organism the purchase is for, same id space and name matching as 'Buyer' (e.g. 'Ministerio de Salud')."
+      },
+      "rubro": {
+        "type": "string",
+        "description": "Product/service category, as the site's idEspecie (e.g. 29) or part of its name (e.g. 'medicinales', 'limpieza', 'alimentos'). Matched against the site's 78 rubros at run start."
+      },
+      "subrubro": {
+        "type": "string",
+        "description": "Sub-category within the selected rubro, as idFamilia or part of its name. Requires 'Category (rubro)'."
+      },
+      "nroGestion": {
+        "type": "string",
+        "description": "Exact process number as printed on the site, e.g. '18' or '02' (combine with the year: several organisms share the same numbering).",
+        "pattern": "^[A-Za-z0-9/-]{1,20}$"
+      },
+      "nroExpediente": {
+        "type": "string",
+        "description": "Exact, full expediente number, e.g. 'EE-2026-00001797-APPSF-OD' (partial values match nothing on the site).",
+        "pattern": "^[A-Za-z0-9#/. -]{1,60}$"
+      },
+      "openingFrom": {
+        "type": "string",
+        "description": "Only tenders whose bid opening (fecha de apertura) is on or after this date. Absolute (2026-09-01) or relative: '7 days' counts back from today, '+7 days' counts forward (Santa Fe calendar). Applied client-side after fetching the listing (the site has no date filter) - rows outside the window are simply skipped and not remembered."
+      },
+      "openingTo": {
+        "type": "string",
+        "description": "Only tenders opening on or before this date. Absolute or relative ('+30 days' = opening within the next month). Client-side."
+      },
+      "eventTypes": {
+        "type": "array",
+        "description": "NEW_LISTING = a process never delivered before; STATUS_CHANGE = a known process that moved to another estado (AP -> ET -> CO); UPDATED = a known open process whose detail page changed (a circular aclaratoria, an acta de apertura, a preadjudicación report, a new opening date...). The last two exist in delta mode only.",
+        "default": [
+          "NEW_LISTING",
+          "STATUS_CHANGE",
+          "UPDATED"
+        ],
+        "items": {
+          "type": "string",
+          "enum": [
+            "NEW_LISTING",
+            "STATUS_CHANGE",
+            "UPDATED"
+          ]
+        }
+      },
+      "onlyNew": {
+        "type": "boolean",
+        "description": "Remembers every process it has delivered (per filter set, in a named key-value store) with the estado it was in and a fingerprint of its detail page, and returns only processes that are new, moved to another estado, or were amended since. Each estado list is walked newest-first and stops as soon as it reaches already-known records.",
+        "default": false
+      },
+      "recheckWindowDays": {
+        "type": "integer",
+        "description": "Delta mode with detail: known processes whose opening date is within this many days in the past (or any time in the future) get their detail page re-read every run to detect amendments (UPDATED). The register shows no 'last modified' signal, so this re-read is the only way to see a new circular or acta. 0 disables it. Re-reads are not charged unless something changed.",
+        "default": 30,
+        "minimum": 0
+      },
+      "sortBy": {
+        "type": "string",
+        "description": "'newest' (idGestion descending = most recently created first) is required for delta mode. 'openingSoonest' / 'openingLatest' order by bid-opening date; 'mostViewed' by the site's own view counter (full runs only).",
+        "default": "newest",
+        "enum": [
+          "newest",
+          "openingSoonest",
+          "openingLatest",
+          "mostViewed"
+        ]
+      },
+      "deltaStateName": {
+        "type": "string",
+        "description": "Optional label for the memory of a monitoring task. Defaults to a fingerprint of your filters, so different schedules never interfere. Set the same name on two tasks to make them share one memory.",
+        "pattern": "^[A-Za-z0-9-]{1,30}$"
+      },
+      "resetState": {
+        "type": "boolean",
+        "description": "Forget every previously delivered process for this delta state and re-baseline (the run then returns up to 'Max records' newest processes).",
+        "default": false
+      },
+      "maxItems": {
+        "type": "integer",
+        "description": "Hard cap on delivered records (and therefore on cost: you pay per record). In delta mode anything beyond the cap is simply delivered by the next run.",
+        "default": 100,
+        "minimum": 1
+      },
+      "fetchDetail": {
+        "type": "boolean",
+        "description": "Opens each process page (one extra request) for the publication timestamp, budget (Monto Original), submission deadline, places, rubros, requesting organism, contact, expediente and the pliego / circular / acta / preadjudicación document links. Off = listing-only summary records (cheaper 'result-summary' price; no UPDATED detection and no status sweep).",
+        "default": true
+      },
+      "maxConcurrency": {
+        "type": "integer",
+        "description": "How many process pages are fetched at once. The site answers a page in 0.1-0.3 s and tolerated 10 in parallel without throttling; 5 is a polite default.",
+        "default": 5,
+        "minimum": 1
+      },
+      "dateRange": {
+        "type": "string",
+        "description": "Kept for tasks created with version 1: '24h', '7d' or '30d' are interpreted as an opening-date window of that many days before AND after today.",
+        "pattern": "^(24h|7d|30d)$"
+      }
+    },
+    "required": []
+  }
+}

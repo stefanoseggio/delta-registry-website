@@ -1,0 +1,569 @@
+{
+  "generatedAt": "2026-09-18T15:00:04.511Z",
+  "totalActors": 28,
+  "succeeded": 28,
+  "failed": 0,
+  "actors": [
+    {
+      "slug": "actor-18-b2b-lead-magnet",
+      "title": "OSM Business Data + DNS Verify - B2B Lead JSON Feed",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "actor-19-maritime-sanctions-monitor",
+      "title": "OFAC SDN + UN Consolidated - Vessel Sanctions Delta API",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "sync",
+      "openapiPatternReason": "Real observed max runtime 6.8s fits safely under GPT Actions' 45s cap — run-sync-get-dataset-items is safe to expose directly.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "actor-20-mdb-procurement-monitor",
+      "title": "World Bank Procurement + Debarment - Delta JSON Feed",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "actor-21-patent-ip-enforcement-monitor",
+      "title": "USPTO PTAB + EPO Opposition - Patent Dispute Delta API",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "actor-22-drug-safety-recalls-monitor",
+      "title": "FDA openFDA + EMA DHPC - Drug Recall Delta Feed",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "actor-24-clinical-trials-delta-engine",
+      "title": "ClinicalTrials.gov + FDA Orange Book - Trial Delta API",
+      "inputSchemaSource": "live-api",
+      "datasetSchemaSource": "live-api",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "ai-crawler-content-signal-permission-monitor",
+      "title": "AI Crawler & Content-Signal Permission Delta Monitor",
+      "inputSchemaSource": "live-api",
+      "datasetSchemaSource": "live-api",
+      "openapiPattern": "sync",
+      "openapiPatternReason": "Real observed max runtime 2.9s fits safely under GPT Actions' 45s cap — run-sync-get-dataset-items is safe to expose directly.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "aozora-bunko-public-domain-text-feed",
+      "title": "Aozora Bunko New Public-Domain Text Delta Feed",
+      "inputSchemaSource": "live-api",
+      "datasetSchemaSource": "live-api",
+      "openapiPattern": "sync",
+      "openapiPatternReason": "Real observed max runtime 10.7s fits safely under GPT Actions' 45s cap — run-sync-get-dataset-items is safe to expose directly.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "australia-grantconnect-monitor",
+      "title": "GrantConnect grants.gov.au - Grant Awards Delta Feed",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "cordoba-compras-monitor",
+      "title": "Cordoba Argentina Licitaciones - Tender Delta API",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "diario-oficial-cl-monitor",
+      "title": "Diario Oficial Chile - Laws & Decrees Delta Feed",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "sync",
+      "openapiPatternReason": "Real observed max runtime 6.3s fits safely under GPT Actions' 45s cap — run-sync-get-dataset-items is safe to expose directly.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "emerging-market-sovereign-debt-auction-monitor",
+      "title": "Emerging-Market Sovereign Debt Auction Monitor - Brazil DPMFi",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "sync",
+      "openapiPatternReason": "Real observed max runtime 5.6s fits safely under GPT Actions' 45s cap — run-sync-get-dataset-items is safe to expose directly.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "entrerios-compras-monitor",
+      "title": "Entre Rios Argentina Licitaciones - Tender Delta API",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "eu-ted-procurement-delta-monitor",
+      "title": "EU TED Procurement Delta Monitor - Tenders, Awards & CPV Alerts",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "Real observed max runtime 429.2s exceeds the 35s safety margin under GPT Actions' 45s cap — using POST /runs + poll GET /actor-runs/{runId}.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "florida-tenders-monitor",
+      "title": "MyFloridaMarketPlace - State Bids Delta JSON Feed",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "kipris-patent-trademark-status-monitor",
+      "title": "KIPRIS Patent & Trademark Status-Change Monitor",
+      "inputSchemaSource": "live-api",
+      "datasetSchemaSource": "live-api",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "mendoza-compras-monitor",
+      "title": "Mendoza COMPR.AR Argentina - Tender Delta API",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "Real observed max runtime 98.1s exceeds the 35s safety margin under GPT Actions' 45s cap — using POST /runs + poll GET /actor-runs/{runId}.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "page-metadata-extractor",
+      "title": "Page Metadata Extractor - SEO & RAG JSON Feed",
+      "inputSchemaSource": "live-api",
+      "datasetSchemaSource": "live-api",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "pba-tenders-monitor",
+      "title": "PBAC Buenos Aires Province - Tender Delta JSON Feed",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "regione-lombardia-grants-registry-monitor",
+      "title": "Regione Lombardia Open Grants & Tenders Registry Delta Monitor",
+      "inputSchemaSource": "live-api",
+      "datasetSchemaSource": "live-api",
+      "openapiPattern": "sync",
+      "openapiPatternReason": "Real observed max runtime 9.1s fits safely under GPT Actions' 45s cap — run-sync-get-dataset-items is safe to expose directly.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "salta-compras-monitor",
+      "title": "Salta Argentina Contrataciones - Tender Delta API",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "santafe-compras-monitor",
+      "title": "Santa Fe Argentina Licitaciones - Tender Delta API",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "sec-enforcement-litigation-delta-feed",
+      "title": "SEC Enforcement & Litigation Release Delta Feed",
+      "inputSchemaSource": "live-api",
+      "datasetSchemaSource": "live-api",
+      "openapiPattern": "async",
+      "openapiPatternReason": "Real observed max runtime 186.2s exceeds the 35s safety margin under GPT Actions' 45s cap — using POST /runs + poll GET /actor-runs/{runId}.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "singapore-acra-registry-monitor",
+      "title": "Singapore ACRA Corporate Registry - Delta Monitor",
+      "inputSchemaSource": "live-api",
+      "datasetSchemaSource": "live-api",
+      "openapiPattern": "async",
+      "openapiPatternReason": "Real observed max runtime 971.5s exceeds the 35s safety margin under GPT Actions' 45s cap — using POST /runs + poll GET /actor-runs/{runId}.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "tucuman-compras-monitor",
+      "title": "Tucuman Argentina Licitaciones - Tender Delta API",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "uae-corporate-registry-monitor",
+      "title": "UAE Corporate Registry Monitor - Dubai Mainland, ADGM & DIFC",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "Real observed max runtime 41.5s exceeds the 35s safety margin under GPT Actions' 45s cap — using POST /runs + poll GET /actor-runs/{runId}.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "uk-hse-enforcement-monitor",
+      "title": "UK HSE Convictions + Notices - Enforcement Delta API",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "async",
+      "openapiPatternReason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    },
+    {
+      "slug": "uk-modern-slavery-statement-registry-monitor",
+      "title": "UK Modern Slavery Statement Registry - S.54 Monitor",
+      "inputSchemaSource": "local-file",
+      "datasetSchemaSource": "local-file",
+      "openapiPattern": "sync",
+      "openapiPatternReason": "Real observed max runtime 7.6s fits safely under GPT Actions' 45s cap — run-sync-get-dataset-items is safe to expose directly.",
+      "formats": [
+        "openai-chat-completions.json",
+        "openai-responses.json",
+        "anthropic.json",
+        "gemini.json",
+        "openapi.json",
+        "langchain_tool.py",
+        "langchain_tool.ts",
+        "llamaindex_tool.py",
+        "crewai_tool.py",
+        "ag2_tool.py"
+      ]
+    }
+  ],
+  "failures": []
+}

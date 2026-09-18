@@ -1,0 +1,148 @@
+{
+  "type": "function",
+  "name": "regione-lombardia-grants-registry-monitor",
+  "description": "Delta monitor for Regione Lombardia's Socrata open-data grants/tenders registry (bandi). Computes a real OPEN/UPCOMING/CLOSED status from source dates, classifies each bando into a policy-area taxonomy, and emits NEW_LISTING/STATUS_CHANGE/UPDATED events. Pay-per-event: billed only for what changed.",
+  "strict": true,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "onlyNew": {
+        "type": [
+          "boolean",
+          "null"
+        ],
+        "description": "When true (default), only NEW_LISTING, STATUS_CHANGE and UPDATED events are delivered - never a BASELINE_SNAPSHOT or SNAPSHOT_NO_DIFF row. When false, every bando currently in scope is delivered every run, including the free first-run baseline and unchanged rows - useful to preview the full dataset before committing spend. Default true if omitted."
+      },
+      "eventTypes": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "Restricts which of the three charged event types are delivered. Leave empty to deliver all three. Has no effect on BASELINE_SNAPSHOT/SNAPSHOT_NO_DIFF, which are controlled solely by onlyNew. Default [] if omitted.",
+        "items": {
+          "type": "string",
+          "enum": [
+            "NEW_LISTING",
+            "STATUS_CHANGE",
+            "UPDATED"
+          ]
+        }
+      },
+      "statusFilter": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "Deliver only bandi whose computed status (derived by this Actor from apertura_adesione/chiusura_adesione against the run's own clock - the source itself publishes no lifecycle-status column) is one of these. This is a delivery-time filter only - every bando is still tracked internally regardless, so one that transitions into or out of your filtered status is still correctly reported as STATUS_CHANGE the moment it does. Leave empty to deliver all statuses. Default [] if omitted.",
+        "items": {
+          "type": "string",
+          "enum": [
+            "UPCOMING",
+            "OPEN",
+            "CLOSED"
+          ]
+        }
+      },
+      "policyAreaFilter": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "Deliver only bandi classified into one of these policy areas by this Actor's own taxonomy mapper (built from the real, observed direzione_generale values in the live dataset - a free-text field with no controlled vocabulary in the source itself). Delivery-time only, same tracking guarantee as statusFilter. Leave empty for all areas. See README for the full taxonomy and its source mapping. Default [] if omitted.",
+        "items": {
+          "type": "string",
+          "enum": [
+            "EDUCATION_TRAINING_LABOR",
+            "CULTURE_TOURISM",
+            "ECONOMIC_DEVELOPMENT_INNOVATION",
+            "SOCIAL_WELFARE_FAMILY_DISABILITY",
+            "PUBLIC_SAFETY_CIVIL_PROTECTION",
+            "ENVIRONMENT_TERRITORY",
+            "AGRICULTURE_FOOD",
+            "SPORT_YOUTH",
+            "INSTITUTIONAL_ADMINISTRATION",
+            "FINANCE_BUDGET",
+            "INFRASTRUCTURE_TRANSPORT",
+            "IN_HOUSE_COMPANIES_AGENCIES",
+            "PROVINCIAL_EMPLOYMENT_OFFICES",
+            "UNCLASSIFIED"
+          ]
+        }
+      },
+      "keyword": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "Full-text search passed server-side as Socrata's own $q parameter, matched against every text column (titolo_bando, direzione_generale, ente, tipo_strumento). Example: \"formazione\" or \"ICT\". Leave empty to skip. Default \"\" if omitted."
+      },
+      "directorateFilter": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "Deliver only bandi whose direzione_generale case-insensitively contains one of these values. Free-text matching against whatever Regione Lombardia's own back office typed in, not a stable enum - real values observed live include \"ISTRUZIONE, FORMAZIONE, LAVORO\", \"CULTURA\", \"ARIA SPA\". Delivery-time only. Leave empty for all directorates. Default [] if omitted."
+      },
+      "maxItems": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "description": "Stops the run once this many records have been pushed (and charged, where applicable). Records not yet reached when the limit is hit are simply re-evaluated fresh next run. Leave unset for no limit - the full register is only ~1,912 rows, so an unlimited run is inexpensive even on a full onlyNew:false baseline pass. Default 20 if omitted.",
+        "minimum": 1
+      },
+      "deltaStateName": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "Names the persistent Key-Value Store this run's delta memory lives in. Use a distinct name per independent schedule/filter configuration so they don't share baseline progress. Default \"default\" if omitted."
+      },
+      "resetState": {
+        "type": [
+          "boolean",
+          "null"
+        ],
+        "description": "When true, ignores all previously-remembered bandi for this deltaStateName and re-baselines from scratch (every bando becomes a fresh, uncharged BASELINE_SNAPSHOT again, subject to onlyNew). Default false if omitted."
+      },
+      "socrataAppToken": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "An optional Socrata app token (free, self-service at dati.lombardia.it) sent as the X-App-Token header on every request. Unauthenticated requests share a per-IP throttle Socrata does not fully document publicly. Supplying your own token removes the shared-IP ceiling entirely. Never logged or persisted beyond this run."
+      },
+      "requestTimeoutSecs": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "description": "Aborts a single Socrata API request that takes longer than this, so one slow response never stalls the whole run. Default 30 if omitted.",
+        "minimum": 5
+      },
+      "maxRetries": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "description": "Retry attempts (exponential backoff with jitter) before a single page fetch is given up on as failed. Applies only to retryable outcomes (429 and 5xx responses, or a request timeout) - any other non-2xx response is treated as final immediately. Default 4 if omitted.",
+        "minimum": 0
+      }
+    },
+    "required": [
+      "onlyNew",
+      "eventTypes",
+      "statusFilter",
+      "policyAreaFilter",
+      "keyword",
+      "directorateFilter",
+      "maxItems",
+      "deltaStateName",
+      "resetState",
+      "socrataAppToken",
+      "requestTimeoutSecs",
+      "maxRetries"
+    ],
+    "additionalProperties": false
+  }
+}

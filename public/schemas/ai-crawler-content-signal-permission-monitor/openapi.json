@@ -1,0 +1,292 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — AI Crawler & Content-Signal Permission Delta Monitor",
+    "description": "Watches any domain and reports the instant its AI-crawler permissions change: a robots.txt Allow/Disallow flip for GPTBot, ClaudeBot and 15 other tracked tokens, a Cloudflare Content-Signal flip, or llms.txt appearing/changing. Pay-per-event: billed only for what changed, with a free baseline audit.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/eWDx4XY54R5GXysFi/run-sync-get-dataset-items": {
+      "post": {
+        "operationId": "runAiCrawlerContentSignalPermissionMonitor",
+        "summary": "Watches any domain and reports the instant its AI-crawler permissions change: a robots.txt Allow/Disallow flip for GPTBot, ClaudeBot and 15 other tracked tokens, a Cloudflare Content-Signal flip, or llms.txt appearing/changing. Pay-per-event: billed only for what changed, with a free baseline audit.",
+        "x-sync-pattern-reason": "Real observed max runtime 2.9s fits safely under GPT Actions' 45s cap — run-sync-get-dataset-items is safe to expose directly.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "domains": {
+                    "type": "array",
+                    "description": "Bare hostnames to monitor - no protocol, no path, no trailing slash. Example: \"cloudflare.com\", \"openai.com\". Each domain is checked at its own https://{domain}/robots.txt (and, if enabled, /llms.txt and /llms-full.txt). Mix your own domains with competitor/vendor domains freely - each gets fully independent delta state.",
+                    "default": []
+                  },
+                  "trackedBots": {
+                    "type": "array",
+                    "description": "The robots.txt User-agent tokens whose Allow/Disallow directives are watched for changes over time. Defaults to 18 currently-documented AI-crawler tokens spanning OpenAI, Anthropic, Google, Apple, Perplexity, Common Crawl, ByteDance, Amazon, Meta, Diffbot, and Cohere. Add a newly-published crawler token, or narrow this to one vendor family, by editing this list.",
+                    "default": [
+                      "GPTBot",
+                      "ChatGPT-User",
+                      "OAI-SearchBot",
+                      "ClaudeBot",
+                      "Claude-User",
+                      "Claude-SearchBot",
+                      "Google-Extended",
+                      "Applebot-Extended",
+                      "PerplexityBot",
+                      "Perplexity-User",
+                      "CCBot",
+                      "Bytespider",
+                      "Amazonbot",
+                      "Meta-ExternalAgent",
+                      "Meta-ExternalFetcher",
+                      "Diffbot",
+                      "cohere-ai",
+                      "omgilibot"
+                    ]
+                  },
+                  "checkContentSignals": {
+                    "type": "boolean",
+                    "description": "Parses any \"Content-Signal: search=..., ai-input=..., ai-train=...\" line found in robots.txt (Cloudflare's proposed extension to the standard, formalized as the IETF draft draft-romm-aipref-contentsignals) and tracks all three category values for change over time. Turn this off only if you exclusively care about classic robots.txt Allow/Disallow directives.",
+                    "default": true
+                  },
+                  "checkLlmsTxt": {
+                    "type": "boolean",
+                    "description": "Fetches both well-known paths (llmstxt.org's proposed convention) and tracks presence/absence plus a content hash, so an added, removed, or edited llms.txt is reported as a CHANGED event. llms.txt is an informal community proposal, not a ratified standard - this Actor reports its presence and content as a signal, never as a compliance guarantee.",
+                    "default": true
+                  },
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "When true (default), a repeat run of an already-baselined domain only delivers ALLOWED, DISALLOWED, and CHANGED events - the free NO_CHANGE row is suppressed when nothing differs. A domain's first-ever check always delivers a free BASELINE_SNAPSHOT regardless of this setting, since that is the point of adding a domain to the watchlist. Set to false to also see an explicit \"nothing changed\" row on every run.",
+                    "default": true
+                  },
+                  "maxDomainsPerRun": {
+                    "type": "integer",
+                    "description": "Hard cap on how many domains from the list are checked (and, where applicable, charged) in a single run. Domains beyond this cap are simply checked on the next run - nothing about their state is lost or marked as seen.",
+                    "default": 200,
+                    "minimum": 1
+                  },
+                  "concurrency": {
+                    "type": "integer",
+                    "description": "Caps the total number of in-flight HTTP requests across the whole run. Each domain fans out to up to three independent resource fetches (robots.txt, llms.txt, llms-full.txt), so this bounds total concurrent load across every domain being checked, not per-domain concurrency. Raise cautiously - most of the wall-clock cost of a large watchlist run is waiting on slow or unresponsive third-party domains, not this Actor's own compute.",
+                    "default": 15,
+                    "minimum": 1
+                  },
+                  "requestTimeoutSecs": {
+                    "type": "integer",
+                    "description": "Aborts a single robots.txt/llms.txt/llms-full.txt request that takes longer than this, so one slow or unresponsive domain never stalls the whole run. Applies per individual attempt, not per domain overall.",
+                    "default": 15,
+                    "minimum": 5
+                  },
+                  "maxRetries": {
+                    "type": "integer",
+                    "description": "Retry attempts (exponential backoff with jitter, capped at 15 seconds between attempts) before a single request is given up on as failed. Applies only to retryable outcomes (429 and 5xx responses, or a request timeout) - any other non-2xx, non-404 response is treated as final immediately and does not consume retry budget. A 404 is never a failure: it is parsed as a valid \"resource absent\" signal.",
+                    "default": 4,
+                    "minimum": 0
+                  },
+                  "deltaStateName": {
+                    "type": "string",
+                    "description": "Names this run's persistent delta-state store. Use a distinct name per independent schedule (for example \"own-sites\" versus \"competitor-watchlist\") so their baselines never cross-contaminate each other.",
+                    "default": "default"
+                  },
+                  "resetState": {
+                    "type": "boolean",
+                    "description": "Wipes all remembered state for every domain under this deltaStateName before the run starts, so every domain is re-baselined from scratch on this run (delivered as free BASELINE_SNAPSHOT records, subject to onlyNew's usual free-baseline behavior).",
+                    "default": false
+                  }
+                },
+                "required": [
+                  "domains"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "actorSpecification": 1,
+                    "fields": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "title": "AI Crawler & Content-Signal Permission Delta Monitor record",
+                      "type": "object",
+                      "properties": {
+                        "record_id": {
+                          "type": "string",
+                          "description": "The bare hostname this record describes. Identity key for delta tracking - stable across runs for the same domain."
+                        },
+                        "event_id": {
+                          "type": "string",
+                          "description": "sha256(record_id|event_type|status_fingerprint|content_fingerprint), deliberately excluding scraped_at, so a retried delivery of the same underlying event reproduces the identical id and can be safely deduplicated downstream."
+                        },
+                        "event_type": {
+                          "type": "string",
+                          "enum": [
+                            "BASELINE_SNAPSHOT",
+                            "ALLOWED",
+                            "DISALLOWED",
+                            "CHANGED",
+                            "NO_CHANGE"
+                          ],
+                          "description": "BASELINE_SNAPSHOT: this domain's first-ever check (free). ALLOWED: a tracked bot's directive changed and at least one flip was permissive with no new block. DISALLOWED: a tracked bot's directive flipped to a block (highest-priority transition when both directions occur in the same run). CHANGED: a Content-Signal category or llms.txt/llms-full.txt changed with no bot-directive flip. NO_CHANGE: nothing differed since the last check (free, delivered only when onlyNew=false)."
+                        },
+                        "scraped_at": {
+                          "type": "string",
+                          "description": "ISO-8601 UTC timestamp this domain's robots.txt/llms.txt were actually fetched."
+                        },
+                        "is_new": {
+                          "type": "boolean",
+                          "description": "True only for this domain's first-ever record (event_type=BASELINE_SNAPSHOT)."
+                        },
+                        "source_url": {
+                          "type": "string",
+                          "description": "The domain's own robots.txt URL that was fetched to produce this record."
+                        },
+                        "domain": {
+                          "type": "string",
+                          "description": "The bare hostname, duplicated from record_id for convenience in table/CSV views."
+                        },
+                        "bot_permissions": {
+                          "type": "object",
+                          "description": "One entry per tracked bot token. Each value carries the matched directive ('allow', 'disallow', or 'not_specified' if no group in robots.txt names this token and no wildcard group applies), the matched path pattern, and which mechanism produced the match ('robots.txt' or null)."
+                        },
+                        "content_signals": {
+                          "type": "object",
+                          "description": "Cloudflare Content-Signal category values as published in robots.txt ('search', 'ai_input', 'ai_train'), each 'yes', 'no', or null if the directive line was absent entirely. Null (all three) whenever checkContentSignals=false."
+                        },
+                        "llms_txt": {
+                          "type": "object",
+                          "description": "Presence, URL, content hash (sha256), and byte size of /llms.txt at fetch time. present=false and the other fields null if absent or checkLlmsTxt=false."
+                        },
+                        "llms_full_txt": {
+                          "type": "object",
+                          "description": "Same shape as llms_txt, for /llms-full.txt."
+                        },
+                        "changed_permissions": {
+                          "type": "array",
+                          "description": "Present only on ALLOWED/DISALLOWED events. Each entry names one bot token whose directive changed since the last check, with its real previous and new directive values."
+                        },
+                        "changed_content_signals": {
+                          "type": "array",
+                          "description": "Present only on CHANGED events caused by a Content-Signal flip. Each entry names one category ('search'/'ai_input'/'ai_train') with its real previous and new value."
+                        },
+                        "llms_txt_change": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "description": "Present only on a CHANGED event caused by llms.txt/llms-full.txt presence or content changing. Carries previous/new presence and previous/new content hash. Null otherwise."
+                        },
+                        "status_fingerprint": {
+                          "type": "string",
+                          "description": "sha256 over this domain's full bot_permissions map. Drives ALLOWED/DISALLOWED classification - the highest-priority delta signal."
+                        },
+                        "content_fingerprint": {
+                          "type": "string",
+                          "description": "sha256 over content_signals plus llms_txt/llms_full_txt presence-and-hash. Drives CHANGED classification when status_fingerprint is unchanged."
+                        }
+                      },
+                      "required": [
+                        "record_id",
+                        "event_id",
+                        "event_type",
+                        "scraped_at",
+                        "is_new",
+                        "source_url",
+                        "domain",
+                        "bot_permissions",
+                        "status_fingerprint",
+                        "content_fingerprint"
+                      ]
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "description": "One row per delta event, most recent first.",
+                        "transformation": {
+                          "fields": [
+                            "domain",
+                            "event_type",
+                            "scraped_at",
+                            "is_new",
+                            "changed_permissions",
+                            "changed_content_signals",
+                            "llms_txt_change",
+                            "source_url"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "domain": {
+                              "label": "Domain",
+                              "format": "text"
+                            },
+                            "event_type": {
+                              "label": "Event",
+                              "format": "text"
+                            },
+                            "scraped_at": {
+                              "label": "Checked at",
+                              "format": "date"
+                            },
+                            "is_new": {
+                              "label": "First check",
+                              "format": "boolean"
+                            },
+                            "changed_permissions": {
+                              "label": "Bot permission changes",
+                              "format": "array"
+                            },
+                            "changed_content_signals": {
+                              "label": "Content-Signal changes",
+                              "format": "array"
+                            },
+                            "llms_txt_change": {
+                              "label": "llms.txt change",
+                              "format": "object"
+                            },
+                            "source_url": {
+                              "label": "robots.txt",
+                              "format": "link"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

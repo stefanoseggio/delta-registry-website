@@ -1,0 +1,55 @@
+{
+  "name": "actor-24-clinical-trials-delta-engine",
+  "description": "Delta-tracks ClinicalTrials.gov trial status changes (RECRUITING, COMPLETED, TERMINATED) and FDA Orange Book patent/exclusivity data against verified live public APIs. Fingerprint-based diffing delivers only new or changed records per run, with full-jitter retry and strict ISO 8601 timestamps.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "sources": {
+        "type": "array",
+        "description": "clinicaltrials = ClinicalTrials.gov API v2 trial-status delta tracking. orangebook = FDA Orange Book patent/exclusivity delta tracking.",
+        "default": [
+          "clinicaltrials"
+        ],
+        "items": {
+          "type": "string",
+          "enum": [
+            "clinicaltrials",
+            "orangebook"
+          ]
+        }
+      },
+      "condition": {
+        "type": "string",
+        "description": "Passed to ClinicalTrials.gov's query.cond parameter, e.g. 'diabetes'. Leave empty to walk all trials matching other filters (not recommended without a narrow maxPages)."
+      },
+      "orangeBookQuery": {
+        "type": "string",
+        "description": "Filter applied to the Orange Book query - an ingredient name or application number."
+      },
+      "maxPages": {
+        "type": "integer",
+        "description": "Hard cap on the number of 100-record ClinicalTrials.gov API pages walked per run.",
+        "default": 20,
+        "minimum": 1
+      },
+      "onlyChanged": {
+        "type": "boolean",
+        "description": "Returns only trials/products that are new or whose tracked fields (overall_status, patent/exclusivity data) changed since a previous run. State persists in a named key-value store unique to this actor across scheduled runs.",
+        "default": false
+      },
+      "maxRetries": {
+        "type": "integer",
+        "description": "Maximum retry attempts (full-jitter exponential backoff) for a single page/extract fetch before it is dead-lettered.",
+        "default": 5,
+        "minimum": 0
+      },
+      "fdaApiKey": {
+        "type": "string",
+        "description": "Optional. openFDA allows 1,000 requests/day without a key (240/min) or 120,000/day with a free key (still 240/min). Only matters for high-volume Orange Book runs - the ClinicalTrials.gov source does not use this key."
+      }
+    },
+    "required": [
+      "sources"
+    ]
+  }
+}

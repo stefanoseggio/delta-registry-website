@@ -1,0 +1,49 @@
+{
+  "name": "cordoba-compras-monitor",
+  "description": "Monitors active public tenders (licitaciones) on the Province of Cordoba, Argentina official procurement portal. Returns organism, dates, status, per-item reference budget, and contact phone, with a delta mode that flags new, status-changed, amended, or closed tenders on recurring runs.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "maxItems": {
+        "type": "integer",
+        "description": "Hard cap on the number of active tenders (licitaciones) returned this run. The source only covers active/open tenders (Licitaciones) - awarded or historical tenders are out of scope for this actor.",
+        "default": 200,
+        "minimum": 1
+      },
+      "onlyNew": {
+        "type": "boolean",
+        "description": "When enabled, persists which tender ids (nroCotizacion) this actor has already returned - and their last-known estado + content fingerprint - in its own named key-value store that survives between scheduled runs, and returns only tenders that are new, changed estado, amended, or closed since a prior run. IMPORTANT: this source's listing is NOT reliably sorted newest-first end to end (verified live - a real tender can appear out of order relative to both its own Fecha Inicio and its own nroCotizacion, within the very first page), so onlyNew filters AFTER a full fetch (up to maxItems) rather than stopping pagination early like this fleet's other delta-enabled actors. It is correct, just not a pagination-cost optimization. Independent of dateRange. Recommended for recurring monitoring; leave off for a full one-off extraction.",
+        "default": false
+      },
+      "eventTypes": {
+        "type": "array",
+        "description": "Which kinds of change to deliver when 'Delta mode' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = seen before, estado changed - free to detect. UPDATED = seen before, same estado, a field changed (a prorroga granted, an amended item/budget). CLOSED = a previously-active tender is absent from this run's fetch - only computed when maxItems does not truncate the walk (a partial walk cannot prove absence).",
+        "default": [
+          "NEW_LISTING",
+          "STATUS_CHANGE",
+          "UPDATED",
+          "CLOSED"
+        ],
+        "items": {
+          "type": "string",
+          "enum": [
+            "NEW_LISTING",
+            "STATUS_CHANGE",
+            "UPDATED",
+            "CLOSED"
+          ]
+        }
+      },
+      "dateRange": {
+        "type": "string",
+        "description": "Optionally restrict results to tenders whose Fecha Inicio (publication date) falls within this window. Independent of onlyNew - this is the source's own declared publication timestamp, not independently cross-verified against when a tender actually first appeared on the portal.",
+        "enum": [
+          "24h",
+          "7d",
+          "30d"
+        ]
+      }
+    },
+    "required": []
+  }
+}

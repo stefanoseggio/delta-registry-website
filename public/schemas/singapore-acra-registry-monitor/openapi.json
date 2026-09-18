@@ -1,0 +1,417 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — Singapore ACRA Corporate Registry - Delta Monitor",
+    "description": "ACRA Singapore UEN delta monitor: tracks the corporate register (Pte Ltd, sole props, LLPs) via data.gov.sg for new incorporations, status changes (Struck Off, In Liquidation, Dissolved), SSIC/address updates. Filter by UEN, SSIC code, or status. Pay-per-event: billed only for what changed.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/ht22I1rCH3Ah9QGnM/runs": {
+      "post": {
+        "operationId": "startSingaporeAcraRegistryMonitorRun",
+        "summary": "Start an async run of: ACRA Singapore UEN delta monitor: tracks the corporate register (Pte Ltd, sole props, LLPs) via data.gov.sg for new incorporations, status changes (Struck Off, In Liquidation, Dissolved), SSIC/address updates. Filter by UEN, SSIC code, or status. Pay-per-event: billed only for what changed.",
+        "x-async-pattern-reason": "Real observed max runtime 971.5s exceeds the 35s safety margin under GPT Actions' 45s cap — using POST /runs + poll GET /actor-runs/{runId}.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "shardSelection": {
+                    "type": "array",
+                    "description": "ACRA's data.gov.sg register is split into 27 files by the entity name's first letter (A-Z, plus 'Others' for names starting with a digit/symbol). Select a subset to bound run time/cost, or leave all selected to monitor the full ~2.1M-entity register.",
+                    "default": [
+                      "A"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E",
+                        "F",
+                        "G",
+                        "H",
+                        "I",
+                        "J",
+                        "K",
+                        "L",
+                        "M",
+                        "N",
+                        "O",
+                        "P",
+                        "Q",
+                        "R",
+                        "S",
+                        "T",
+                        "U",
+                        "V",
+                        "W",
+                        "X",
+                        "Y",
+                        "Z",
+                        "Others"
+                      ]
+                    }
+                  },
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "When true (recommended, and the only free-of-charge default), only NEW_LISTING, STATUS_CHANGE, and UPDATED events are delivered - never a snapshot of unchanged or first-run-baseline entities. When false, every entity is delivered every run, including BASELINE_SNAPSHOT (first-run) and SNAPSHOT_NO_DIFF (unchanged) rows - useful for a full audit/export, but on a first run against all 27 shards this delivers roughly 2.1 million uncharged rows to your dataset.",
+                    "default": true
+                  },
+                  "eventTypes": {
+                    "type": "array",
+                    "description": "Restricts which of the three charged event types are delivered. Leave empty to deliver all three. Has no effect on BASELINE_SNAPSHOT/SNAPSHOT_NO_DIFF, which are controlled solely by 'onlyNew'.",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "NEW_LISTING",
+                        "STATUS_CHANGE",
+                        "UPDATED"
+                      ]
+                    }
+                  },
+                  "ssicCodeFilter": {
+                    "type": "array",
+                    "description": "Deliver only entities whose primary or secondary SSIC code starts with one of these prefixes - e.g. [\"62\"] for the whole Computer Programming/IT division (62011, 62020, 62090, ...), or [\"62011\"] for an exact code. Matching happens at delivery time only: every entity is still tracked internally regardless of this filter, so an entity that changes INTO your filtered SSIC range is correctly reported as UPDATED/STATUS_CHANGE the moment it does, not missed because it didn't match previously. Leave empty to deliver all industries.",
+                    "default": []
+                  },
+                  "entityStatusFilter": {
+                    "type": "array",
+                    "description": "Deliver only entities whose CURRENT status exactly matches one of these (case-insensitive) - e.g. [\"Struck Off\", \"In Liquidation - Compulsory Winding Up (Insolvency)\"] to watch only distressed/exited entities. Real status strings observed in the live register (2026-09-11): \"Live\", \"Live Company\", \"Struck Off\", \"Terminated\", \"Cancelled\", \"Cancelled (Non-Renewal)\", \"Ceased Registration\", \"Amalgamated\", \"Dissolved - Members Voluntary Winding Up\", \"Dissolved - Creditors Voluntary Winding Up\", \"Dissolved - Compulsory Winding Up (Insolvency)\", \"In Liquidation - Members voluntary winding up\", \"In Liquidation - Compulsory Winding Up (Insolvency)\". This list is not guaranteed exhaustive - ACRA's o...",
+                    "default": []
+                  },
+                  "maxItems": {
+                    "type": "integer",
+                    "description": "Stops the run once this many records have been pushed (and charged, where applicable). Entities not yet reached when the limit is hit are simply re-evaluated fresh next run - nothing is lost or double-counted. Leave unset for no limit (a full-register run can deliver a large number of BASELINE_SNAPSHOT rows on its very first execution if onlyNew=false).",
+                    "default": 25,
+                    "minimum": 1
+                  },
+                  "deltaStateName": {
+                    "type": "string",
+                    "description": "Names the persistent Key-Value Store this run's delta memory lives in. Use a distinct name per independent schedule/configuration if you run this Actor more than one way (e.g. one schedule per shard subset) so they don't share baseline progress. Leave as 'default' for a single schedule.",
+                    "default": "default"
+                  },
+                  "resetState": {
+                    "type": "boolean",
+                    "description": "When true, ignores all previously-remembered entities for the selected shards and re-baselines from scratch (every entity becomes a fresh, uncharged BASELINE_SNAPSHOT again). Use only to deliberately restart monitoring - this will suppress NEW_LISTING/STATUS_CHANGE/UPDATED detection for one run per affected shard.",
+                    "default": false
+                  },
+                  "watchlistUens": {
+                    "type": "array",
+                    "description": "A bounded list of specific UENs to re-check via ACRA's own real-time Business Profile API (see 'ACRA Business Profile API key' below) in addition to the monthly bulk extract - use this for a small number of high-priority counterparties where a fresher-than-monthly check matters. Requires 'ACRA Business Profile API key' to be set.",
+                    "default": []
+                  },
+                  "acraBusinessProfileApiKey": {
+                    "type": "string",
+                    "description": "Required only when 'Watchlist UENs' is non-empty. Bring-your-own-key: obtain a paid subscription key from ACRA's own API Marketplace (Entity Information Query / EIQ product, launched 18 Nov 2025) - this Actor never attempts to create that subscription on your behalf. Never logged or persisted beyond this run. Note: the exact response schema for this API was not independently verified during this Actor's build (it sits behind the same subscriber wall as the key itself) - see AGENTS.md before relying on BYOK enrichment in production."
+                  },
+                  "webhookUrl": {
+                    "type": "string",
+                    "description": "A Slack Incoming Webhook URL, or any HTTPS endpoint that accepts a JSON POST (e.g. a Make/n8n/Zapier catch-hook), to receive a formatted alert the moment a STATUS_CHANGE event is detected (the event type a compliance team actually escalates on). This is independent of, and does not replace, Apify's own platform-level webhook system, which you can configure separately in the Apify Console for the other event types."
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run started. Poll GET /actor-runs/{runId} with the returned run id until status is SUCCEEDED, then fetch its dataset items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/actor-runs/{runId}": {
+      "get": {
+        "operationId": "getSingaporeAcraRegistryMonitorRunStatus",
+        "summary": "Poll the status of a previously started run.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current run status. When status is SUCCEEDED, fetch the dataset via GET /datasets/{datasetId}/items, passing this response's defaultDatasetId field as {datasetId}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "defaultDatasetId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/datasets/{datasetId}/items": {
+      "get": {
+        "operationId": "getSingaporeAcraRegistryMonitorDatasetItems",
+        "summary": "Fetch the dataset items produced by a completed run.",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "actorSpecification": 1,
+                    "fields": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "type": "object",
+                      "required": [
+                        "event_type",
+                        "record_id",
+                        "uen",
+                        "entity_name",
+                        "entity_status_description",
+                        "is_new",
+                        "shard",
+                        "scraped_at"
+                      ],
+                      "properties": {
+                        "@type": {
+                          "type": "string",
+                          "enum": [
+                            "schema:Organization"
+                          ]
+                        },
+                        "event_id": {
+                          "type": "string"
+                        },
+                        "event_type": {
+                          "type": "string",
+                          "enum": [
+                            "NEW_LISTING",
+                            "STATUS_CHANGE",
+                            "UPDATED",
+                            "SNAPSHOT_NO_DIFF",
+                            "BASELINE_SNAPSHOT"
+                          ]
+                        },
+                        "record_id": {
+                          "type": "string"
+                        },
+                        "uen": {
+                          "type": "string"
+                        },
+                        "entity_name": {
+                          "type": "string"
+                        },
+                        "entity_type_description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "entity_status_description": {
+                          "type": "string"
+                        },
+                        "previous_status": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "registration_incorporation_date": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "uen_issue_date": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "registered_address": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "primary_ssic_code": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "primary_ssic_description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "secondary_ssic_code": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "secondary_ssic_description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "no_of_officers": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "former_entity_names": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "audit_firm_names": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "changed_fields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "status_fingerprint": {
+                          "type": "string"
+                        },
+                        "content_fingerprint": {
+                          "type": "string"
+                        },
+                        "is_new": {
+                          "type": "boolean"
+                        },
+                        "shard": {
+                          "type": "string"
+                        },
+                        "source_url": {
+                          "type": "string"
+                        },
+                        "source_dataset_last_updated": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "scraped_at": {
+                          "type": "string"
+                        },
+                        "byok_enriched": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "transformation": {
+                          "fields": [
+                            "event_type",
+                            "record_id",
+                            "entity_name",
+                            "entity_status_description",
+                            "previous_status",
+                            "primary_ssic_description",
+                            "scraped_at"
+                          ]
+                        },
+                        "display": {
+                          "component": "table"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

@@ -1,0 +1,398 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — Cordoba Argentina Licitaciones - Tender Delta API",
+    "description": "Monitors active public tenders (licitaciones) on the Province of Cordoba, Argentina official procurement portal. Returns organism, dates, status, per-item reference budget, and contact phone, with a delta mode that flags new, status-changed, amended, or closed tenders on recurring runs.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/q9jhMgJRSGjyNbXKA/runs": {
+      "post": {
+        "operationId": "startCordobaComprasMonitorRun",
+        "summary": "Start an async run of: Monitors active public tenders (licitaciones) on the Province of Cordoba, Argentina official procurement portal. Returns organism, dates, status, per-item reference budget, and contact phone, with a delta mode that flags new, status-changed, amended, or closed tenders on recurring runs.",
+        "x-async-pattern-reason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "maxItems": {
+                    "type": "integer",
+                    "description": "Hard cap on the number of active tenders (licitaciones) returned this run. The source only covers active/open tenders (Licitaciones) - awarded or historical tenders are out of scope for this actor.",
+                    "default": 200,
+                    "minimum": 1
+                  },
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "When enabled, persists which tender ids (nroCotizacion) this actor has already returned - and their last-known estado + content fingerprint - in its own named key-value store that survives between scheduled runs, and returns only tenders that are new, changed estado, amended, or closed since a prior run. IMPORTANT: this source's listing is NOT reliably sorted newest-first end to end (verified live - a real tender can appear out of order relative to both its own Fecha Inicio and its own nroCotizacion, within the very first page), so onlyNew filters AFTER a full fetch (up to maxItems) rather than stopping pagination early like this fleet's other delta-enabled actors. It is correct, just not...",
+                    "default": false
+                  },
+                  "eventTypes": {
+                    "type": "array",
+                    "description": "Which kinds of change to deliver when 'Delta mode' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = seen before, estado changed - free to detect. UPDATED = seen before, same estado, a field changed (a prorroga granted, an amended item/budget). CLOSED = a previously-active tender is absent from this run's fetch - only computed when maxItems does not truncate the walk (a partial walk cannot prove absence).",
+                    "default": [
+                      "NEW_LISTING",
+                      "STATUS_CHANGE",
+                      "UPDATED",
+                      "CLOSED"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "NEW_LISTING",
+                        "STATUS_CHANGE",
+                        "UPDATED",
+                        "CLOSED"
+                      ]
+                    }
+                  },
+                  "dateRange": {
+                    "type": "string",
+                    "description": "Optionally restrict results to tenders whose Fecha Inicio (publication date) falls within this window. Independent of onlyNew - this is the source's own declared publication timestamp, not independently cross-verified against when a tender actually first appeared on the portal.",
+                    "enum": [
+                      "24h",
+                      "7d",
+                      "30d"
+                    ]
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run started. Poll GET /actor-runs/{runId} with the returned run id until status is SUCCEEDED, then fetch its dataset items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/actor-runs/{runId}": {
+      "get": {
+        "operationId": "getCordobaComprasMonitorRunStatus",
+        "summary": "Poll the status of a previously started run.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current run status. When status is SUCCEEDED, fetch the dataset via GET /datasets/{datasetId}/items, passing this response's defaultDatasetId field as {datasetId}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "defaultDatasetId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/datasets/{datasetId}/items": {
+      "get": {
+        "operationId": "getCordobaComprasMonitorDatasetItems",
+        "summary": "Fetch the dataset items produced by a completed run.",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "actorSpecification": 1,
+                    "title": "Dataset Schema",
+                    "fields": {
+                      "type": "object",
+                      "properties": {
+                        "nroCotizacion": {
+                          "title": "Nro Cotizacion",
+                          "type": "string",
+                          "description": "Tender process number, e.g. 2026/000091"
+                        },
+                        "tipoContratacion": {
+                          "title": "Tipo Contratacion",
+                          "type": "string"
+                        },
+                        "servicioAdministrativo": {
+                          "title": "Servicio Administrativo",
+                          "type": "string",
+                          "description": "Issuing agency"
+                        },
+                        "jurisdiccion": {
+                          "title": "Jurisdiccion",
+                          "type": "string"
+                        },
+                        "fechaInicio": {
+                          "title": "Fecha Inicio",
+                          "type": "string"
+                        },
+                        "fechaFinalizacion": {
+                          "title": "Fecha Finalizacion",
+                          "type": "string",
+                          "description": "Closing/opening date and time"
+                        },
+                        "estado": {
+                          "title": "Estado",
+                          "type": "string"
+                        },
+                        "prorroga": {
+                          "title": "Prorroga",
+                          "type": "boolean",
+                          "description": "Whether the deadline has been extended"
+                        },
+                        "items": {
+                          "title": "Items",
+                          "type": "array",
+                          "description": "Line items with quantity and reference/official budget, extracted inline - no extra request needed",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "renglon": {
+                                "type": "string"
+                              },
+                              "cantidad": {
+                                "type": "string"
+                              },
+                              "precioReferencia": {
+                                "type": "string"
+                              },
+                              "presupuestoOficial": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "telefonoContacto": {
+                          "title": "Telefono Contacto",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "record_id": {
+                          "title": "Record ID",
+                          "type": "string",
+                          "description": "Same value as nroCotizacion - the natural unique id for this tender"
+                        },
+                        "event_type": {
+                          "title": "Event Type",
+                          "type": "string",
+                          "description": "NEW_LISTING (never seen before), STATUS_CHANGE (estado changed since last seen), UPDATED (a field changed, same estado), UNCHANGED (only when Delta mode is off) or CLOSED (no longer active)."
+                        },
+                        "previousEstado": {
+                          "title": "Previous Estado",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Set only when event_type=STATUS_CHANGE: the estado this record_id was last seen under."
+                        },
+                        "scraped_at": {
+                          "title": "Scraped At",
+                          "type": "string",
+                          "description": "ISO-8601 timestamp of this run's extraction, same value for every record from one run"
+                        },
+                        "is_new": {
+                          "title": "Is New",
+                          "type": "boolean",
+                          "description": "True if this tender's id was not in the persisted seen-set when this run started"
+                        },
+                        "contentHash": {
+                          "title": "Content Hash",
+                          "type": "string",
+                          "description": "sha1 fingerprint of this record's changeable fields - used to detect UPDATED between runs."
+                        },
+                        "source_url": {
+                          "title": "Source URL",
+                          "type": "string",
+                          "description": "The general listing page - this portal has no stable per-tender deep link (session/ViewState-bound postback UI)"
+                        }
+                      }
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "transformation": {
+                          "fields": [
+                            "nroCotizacion",
+                            "tipoContratacion",
+                            "servicioAdministrativo",
+                            "fechaFinalizacion",
+                            "estado"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "Nro Cotizacion",
+                              "format": "text",
+                              "field": "nroCotizacion"
+                            },
+                            {
+                              "label": "Tipo",
+                              "format": "text",
+                              "field": "tipoContratacion"
+                            },
+                            {
+                              "label": "Organismo",
+                              "format": "text",
+                              "field": "servicioAdministrativo"
+                            },
+                            {
+                              "label": "Cierre",
+                              "format": "text",
+                              "field": "fechaFinalizacion"
+                            },
+                            {
+                              "label": "Estado",
+                              "format": "text",
+                              "field": "estado"
+                            }
+                          ]
+                        }
+                      },
+                      "changes": {
+                        "title": "Status changes & closures",
+                        "transformation": {
+                          "fields": [
+                            "record_id",
+                            "event_type",
+                            "previousEstado",
+                            "estado",
+                            "servicioAdministrativo",
+                            "fechaFinalizacion",
+                            "scraped_at"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "Nro Cotizacion",
+                              "format": "text",
+                              "field": "record_id"
+                            },
+                            {
+                              "label": "Evento",
+                              "format": "text",
+                              "field": "event_type"
+                            },
+                            {
+                              "label": "Estado anterior",
+                              "format": "text",
+                              "field": "previousEstado"
+                            },
+                            {
+                              "label": "Estado actual",
+                              "format": "text",
+                              "field": "estado"
+                            },
+                            {
+                              "label": "Organismo",
+                              "format": "text",
+                              "field": "servicioAdministrativo"
+                            },
+                            {
+                              "label": "Cierre",
+                              "format": "text",
+                              "field": "fechaFinalizacion"
+                            },
+                            {
+                              "label": "Detectado",
+                              "format": "date",
+                              "field": "scraped_at"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

@@ -1,0 +1,339 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — Regione Lombardia Open Grants & Tenders Registry Delta Monitor",
+    "description": "Delta monitor for Regione Lombardia's Socrata open-data grants/tenders registry (bandi). Computes a real OPEN/UPCOMING/CLOSED status from source dates, classifies each bando into a policy-area taxonomy, and emits NEW_LISTING/STATUS_CHANGE/UPDATED events. Pay-per-event: billed only for what changed.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/f0xRlvzERsbgbU1ru/run-sync-get-dataset-items": {
+      "post": {
+        "operationId": "runRegioneLombardiaGrantsRegistryMonitor",
+        "summary": "Delta monitor for Regione Lombardia's Socrata open-data grants/tenders registry (bandi). Computes a real OPEN/UPCOMING/CLOSED status from source dates, classifies each bando into a policy-area taxonomy, and emits NEW_LISTING/STATUS_CHANGE/UPDATED events. Pay-per-event: billed only for what changed.",
+        "x-sync-pattern-reason": "Real observed max runtime 9.1s fits safely under GPT Actions' 45s cap — run-sync-get-dataset-items is safe to expose directly.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "When true (default), only NEW_LISTING, STATUS_CHANGE and UPDATED events are delivered - never a BASELINE_SNAPSHOT or SNAPSHOT_NO_DIFF row. When false, every bando currently in scope is delivered every run, including the free first-run baseline and unchanged rows - useful to preview the full dataset before committing spend.",
+                    "default": true
+                  },
+                  "eventTypes": {
+                    "type": "array",
+                    "description": "Restricts which of the three charged event types are delivered. Leave empty to deliver all three. Has no effect on BASELINE_SNAPSHOT/SNAPSHOT_NO_DIFF, which are controlled solely by onlyNew.",
+                    "default": [],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "NEW_LISTING",
+                        "STATUS_CHANGE",
+                        "UPDATED"
+                      ]
+                    }
+                  },
+                  "statusFilter": {
+                    "type": "array",
+                    "description": "Deliver only bandi whose computed status (derived by this Actor from apertura_adesione/chiusura_adesione against the run's own clock - the source itself publishes no lifecycle-status column) is one of these. This is a delivery-time filter only - every bando is still tracked internally regardless, so one that transitions into or out of your filtered status is still correctly reported as STATUS_CHANGE the moment it does. Leave empty to deliver all statuses.",
+                    "default": [],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "UPCOMING",
+                        "OPEN",
+                        "CLOSED"
+                      ]
+                    }
+                  },
+                  "policyAreaFilter": {
+                    "type": "array",
+                    "description": "Deliver only bandi classified into one of these policy areas by this Actor's own taxonomy mapper (built from the real, observed direzione_generale values in the live dataset - a free-text field with no controlled vocabulary in the source itself). Delivery-time only, same tracking guarantee as statusFilter. Leave empty for all areas. See README for the full taxonomy and its source mapping.",
+                    "default": [],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "EDUCATION_TRAINING_LABOR",
+                        "CULTURE_TOURISM",
+                        "ECONOMIC_DEVELOPMENT_INNOVATION",
+                        "SOCIAL_WELFARE_FAMILY_DISABILITY",
+                        "PUBLIC_SAFETY_CIVIL_PROTECTION",
+                        "ENVIRONMENT_TERRITORY",
+                        "AGRICULTURE_FOOD",
+                        "SPORT_YOUTH",
+                        "INSTITUTIONAL_ADMINISTRATION",
+                        "FINANCE_BUDGET",
+                        "INFRASTRUCTURE_TRANSPORT",
+                        "IN_HOUSE_COMPANIES_AGENCIES",
+                        "PROVINCIAL_EMPLOYMENT_OFFICES",
+                        "UNCLASSIFIED"
+                      ]
+                    }
+                  },
+                  "keyword": {
+                    "type": "string",
+                    "description": "Full-text search passed server-side as Socrata's own $q parameter, matched against every text column (titolo_bando, direzione_generale, ente, tipo_strumento). Example: \"formazione\" or \"ICT\". Leave empty to skip.",
+                    "default": ""
+                  },
+                  "directorateFilter": {
+                    "type": "array",
+                    "description": "Deliver only bandi whose direzione_generale case-insensitively contains one of these values. Free-text matching against whatever Regione Lombardia's own back office typed in, not a stable enum - real values observed live include \"ISTRUZIONE, FORMAZIONE, LAVORO\", \"CULTURA\", \"ARIA SPA\". Delivery-time only. Leave empty for all directorates.",
+                    "default": []
+                  },
+                  "maxItems": {
+                    "type": "integer",
+                    "description": "Stops the run once this many records have been pushed (and charged, where applicable). Records not yet reached when the limit is hit are simply re-evaluated fresh next run. Leave unset for no limit - the full register is only ~1,912 rows, so an unlimited run is inexpensive even on a full onlyNew:false baseline pass.",
+                    "default": 20,
+                    "minimum": 1
+                  },
+                  "deltaStateName": {
+                    "type": "string",
+                    "description": "Names the persistent Key-Value Store this run's delta memory lives in. Use a distinct name per independent schedule/filter configuration so they don't share baseline progress.",
+                    "default": "default"
+                  },
+                  "resetState": {
+                    "type": "boolean",
+                    "description": "When true, ignores all previously-remembered bandi for this deltaStateName and re-baselines from scratch (every bando becomes a fresh, uncharged BASELINE_SNAPSHOT again, subject to onlyNew).",
+                    "default": false
+                  },
+                  "socrataAppToken": {
+                    "type": "string",
+                    "description": "An optional Socrata app token (free, self-service at dati.lombardia.it) sent as the X-App-Token header on every request. Unauthenticated requests share a per-IP throttle Socrata does not fully document publicly. Supplying your own token removes the shared-IP ceiling entirely. Never logged or persisted beyond this run."
+                  },
+                  "requestTimeoutSecs": {
+                    "type": "integer",
+                    "description": "Aborts a single Socrata API request that takes longer than this, so one slow response never stalls the whole run.",
+                    "default": 30,
+                    "minimum": 5
+                  },
+                  "maxRetries": {
+                    "type": "integer",
+                    "description": "Retry attempts (exponential backoff with jitter) before a single page fetch is given up on as failed. Applies only to retryable outcomes (429 and 5xx responses, or a request timeout) - any other non-2xx response is treated as final immediately.",
+                    "default": 4,
+                    "minimum": 0
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "actorSpecification": 1,
+                    "fields": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "title": "Regione Lombardia Open Grants & Tenders Registry Delta Monitor record",
+                      "type": "object",
+                      "properties": {
+                        "record_id": {
+                          "type": "string",
+                          "description": "codice_bando - the source's own stable identity key for this bando."
+                        },
+                        "event_id": {
+                          "type": "string",
+                          "description": "sha256(record_id|event_type|status_fingerprint|content_fingerprint), excluding scraped_at, so a retried delivery reproduces the identical id."
+                        },
+                        "event_type": {
+                          "type": "string",
+                          "enum": [
+                            "BASELINE_SNAPSHOT",
+                            "NEW_LISTING",
+                            "STATUS_CHANGE",
+                            "UPDATED",
+                            "SNAPSHOT_NO_DIFF"
+                          ],
+                          "description": "BASELINE_SNAPSHOT: first-ever check (free). NEW_LISTING: a codice_bando not previously seen, after baseline. STATUS_CHANGE: computed_status (UPCOMING/OPEN/CLOSED) differs from last check. UPDATED: any other tracked field changed with status unchanged. SNAPSHOT_NO_DIFF: nothing differed (free, only when onlyNew=false)."
+                        },
+                        "scraped_at": {
+                          "type": "string",
+                          "description": "ISO-8601 UTC timestamp this row was actually fetched."
+                        },
+                        "is_new": {
+                          "type": "boolean",
+                          "description": "True only for this bando's first-ever record (event_type=BASELINE_SNAPSHOT)."
+                        },
+                        "source_url": {
+                          "type": "string",
+                          "description": "The Socrata API query URL used to fetch this exact row."
+                        },
+                        "codice_bando": {
+                          "type": "string"
+                        },
+                        "titolo_bando": {
+                          "type": "string"
+                        },
+                        "direzione_generale": {
+                          "type": "string",
+                          "description": "Free-text publishing directorate/entity as typed by Regione Lombardia's own back office - no controlled vocabulary in the source."
+                        },
+                        "ente": {
+                          "type": "string"
+                        },
+                        "tipo_strumento": {
+                          "type": "string"
+                        },
+                        "apertura_adesione_iso": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "chiusura_adesione_iso": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "presentato": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "Number of applications submitted so far. Normalized to a real number - the live Socrata API serializes this as a JSON string, not a number, despite the field's own declared type."
+                        },
+                        "computed_status": {
+                          "type": "string",
+                          "enum": [
+                            "UPCOMING",
+                            "OPEN",
+                            "CLOSED"
+                          ],
+                          "description": "Computed by this Actor from apertura_adesione/chiusura_adesione against the run's own clock - the source itself publishes no lifecycle-status column. A null chiusura_adesione is treated as open-ended (never CLOSED on that basis alone)."
+                        },
+                        "policy_area": {
+                          "type": "string",
+                          "description": "This Actor's own taxonomy classification of direzione_generale, built from the real distribution of values observed in the live dataset. See README for the full mapping. UNCLASSIFIED for any value not yet seen/mapped."
+                        },
+                        "changed_fields": {
+                          "type": [
+                            "array",
+                            "null"
+                          ],
+                          "description": "Present only on STATUS_CHANGE/UPDATED events - each entry names one field with its real previous and current value."
+                        },
+                        "status_fingerprint": {
+                          "type": "string",
+                          "description": "sha256(computed_status) - drives STATUS_CHANGE classification, the highest-priority transition."
+                        },
+                        "content_fingerprint": {
+                          "type": "string",
+                          "description": "sha256 over every other tracked field - drives UPDATED classification when status_fingerprint is unchanged."
+                        },
+                        "license": {
+                          "type": "string",
+                          "description": "License framing for this dataset. Stated with an explicit confirmation caveat - see README."
+                        }
+                      },
+                      "required": [
+                        "record_id",
+                        "event_id",
+                        "event_type",
+                        "scraped_at",
+                        "is_new",
+                        "source_url",
+                        "codice_bando",
+                        "computed_status",
+                        "policy_area",
+                        "status_fingerprint",
+                        "content_fingerprint"
+                      ]
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "description": "One row per delta event, most recent first.",
+                        "transformation": {
+                          "fields": [
+                            "codice_bando",
+                            "titolo_bando",
+                            "event_type",
+                            "computed_status",
+                            "policy_area",
+                            "direzione_generale",
+                            "chiusura_adesione_iso",
+                            "changed_fields",
+                            "source_url"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "codice_bando": {
+                              "label": "Codice bando",
+                              "format": "text"
+                            },
+                            "titolo_bando": {
+                              "label": "Titolo",
+                              "format": "text"
+                            },
+                            "event_type": {
+                              "label": "Event",
+                              "format": "text"
+                            },
+                            "computed_status": {
+                              "label": "Status",
+                              "format": "text"
+                            },
+                            "policy_area": {
+                              "label": "Policy area",
+                              "format": "text"
+                            },
+                            "direzione_generale": {
+                              "label": "Direzione generale",
+                              "format": "text"
+                            },
+                            "chiusura_adesione_iso": {
+                              "label": "Closes",
+                              "format": "date"
+                            },
+                            "changed_fields": {
+                              "label": "Changes",
+                              "format": "array"
+                            },
+                            "source_url": {
+                              "label": "Source",
+                              "format": "link"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

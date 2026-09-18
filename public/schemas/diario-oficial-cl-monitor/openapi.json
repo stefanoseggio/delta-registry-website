@@ -1,0 +1,299 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — Diario Oficial Chile - Laws & Decrees Delta Feed",
+    "description": "Extracts today's edition of Chile's Diario Oficial (official gazette): laws, decrees and resolutions with branch, ministry and agency hierarchy, plus a direct PDF link per entry. Delta mode reports only new listings and corrections across recurring runs.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/qfBeEKuLfYUw9UOuW/run-sync-get-dataset-items": {
+      "post": {
+        "operationId": "runDiarioOficialClMonitor",
+        "summary": "Extracts today's edition of Chile's Diario Oficial (official gazette): laws, decrees and resolutions with branch, ministry and agency hierarchy, plus a direct PDF link per entry. Delta mode reports only new listings and corrections across recurring runs.",
+        "x-sync-pattern-reason": "Real observed max runtime 6.3s fits safely under GPT Actions' 45s cap — run-sync-get-dataset-items is safe to expose directly.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sections": {
+                    "type": "array",
+                    "description": "Which sections of the edition to fetch. Not every section publishes content every day - a section with nothing that day returns 404 from the source and is skipped, not treated as an error.",
+                    "default": [
+                      "normas_generales"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "normas_generales",
+                        "avisos_destacados",
+                        "marcas_patentes",
+                        "normas_particulares",
+                        "publicaciones_judiciales",
+                        "empresas_cooperativas",
+                        "bom"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "maxItems": {
+                    "type": "integer",
+                    "description": "Hard cap on the number of publications returned this run, across all selected sections.",
+                    "default": 300,
+                    "minimum": 1
+                  },
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "Return only publications that are new or amended (a correction re-published under the same CVE) since a prior run today, tracked in a named key-value store scoped to this actor. Most useful re-running the same day's edition on a schedule to catch late additions/corrections. There is no CLOSED or status-change event in this domain - a published legal notice is never withdrawn or 'closed', it is a permanent public record.",
+                    "default": false
+                  },
+                  "eventTypes": {
+                    "type": "array",
+                    "description": "Which kinds of change to deliver when 'Only new records' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. UPDATED = same CVE (or identity), the content changed - a correction.",
+                    "default": [
+                      "NEW_LISTING",
+                      "UPDATED"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "NEW_LISTING",
+                        "UPDATED"
+                      ]
+                    }
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "actorSpecification": 1,
+                    "title": "Dataset Schema",
+                    "fields": {
+                      "type": "object",
+                      "properties": {
+                        "rama": {
+                          "title": "Rama",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Branch of government, e.g. PODER EJECUTIVO"
+                        },
+                        "ministerio": {
+                          "title": "Ministerio",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Ministry or top-level agency"
+                        },
+                        "organismo": {
+                          "title": "Organismo",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Sub-agency, e.g. a Subsecretaria"
+                        },
+                        "descripcion": {
+                          "title": "Descripcion",
+                          "type": "string",
+                          "description": "The publication entry text"
+                        },
+                        "pdfUrl": {
+                          "title": "PDF URL",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Direct link to the official PDF"
+                        },
+                        "cve": {
+                          "title": "CVE",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Codigo de Verificacion Electronica"
+                        },
+                        "seccion": {
+                          "title": "Seccion",
+                          "type": "string",
+                          "description": "Which section this entry came from"
+                        },
+                        "edicion": {
+                          "title": "Edicion",
+                          "type": "string",
+                          "description": "Edition number"
+                        },
+                        "fecha": {
+                          "title": "Fecha",
+                          "type": "string",
+                          "description": "Edition date, DD-MM-YYYY"
+                        },
+                        "scrapedAt": {
+                          "title": "Scraped at",
+                          "type": "string",
+                          "description": "ISO timestamp of extraction"
+                        },
+                        "record_id": {
+                          "title": "Record ID",
+                          "type": "string",
+                          "description": "The CVE when present, otherwise a content hash - see AGENTS.md."
+                        },
+                        "event_type": {
+                          "title": "Event Type",
+                          "type": "string",
+                          "description": "NEW_LISTING (never seen before), UPDATED (a correction to a known entry) or UNCHANGED (only when Only new records is off)."
+                        },
+                        "is_new": {
+                          "title": "Is New",
+                          "type": "boolean",
+                          "description": "True if this id was not in the persisted seen-set when this run started."
+                        },
+                        "source_url": {
+                          "title": "Source URL",
+                          "type": "string",
+                          "description": "The publication's own PDF link when present, otherwise the shared section page."
+                        },
+                        "contentHash": {
+                          "title": "Content Hash",
+                          "type": "string",
+                          "description": "sha1 fingerprint used to detect UPDATED (a correction) between runs."
+                        }
+                      }
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "transformation": {
+                          "fields": [
+                            "ministerio",
+                            "organismo",
+                            "descripcion",
+                            "seccion",
+                            "fecha"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "Ministerio",
+                              "format": "text",
+                              "field": "ministerio"
+                            },
+                            {
+                              "label": "Organismo",
+                              "format": "text",
+                              "field": "organismo"
+                            },
+                            {
+                              "label": "Descripcion",
+                              "format": "text",
+                              "field": "descripcion"
+                            },
+                            {
+                              "label": "Seccion",
+                              "format": "text",
+                              "field": "seccion"
+                            },
+                            {
+                              "label": "Fecha",
+                              "format": "text",
+                              "field": "fecha"
+                            }
+                          ]
+                        }
+                      },
+                      "changes": {
+                        "title": "New & corrected entries",
+                        "transformation": {
+                          "fields": [
+                            "record_id",
+                            "event_type",
+                            "ministerio",
+                            "descripcion",
+                            "source_url",
+                            "scrapedAt"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "CVE",
+                              "format": "text",
+                              "field": "record_id"
+                            },
+                            {
+                              "label": "Evento",
+                              "format": "text",
+                              "field": "event_type"
+                            },
+                            {
+                              "label": "Ministerio",
+                              "format": "text",
+                              "field": "ministerio"
+                            },
+                            {
+                              "label": "Descripcion",
+                              "format": "text",
+                              "field": "descripcion"
+                            },
+                            {
+                              "label": "PDF",
+                              "format": "link",
+                              "field": "source_url"
+                            },
+                            {
+                              "label": "Detectado",
+                              "format": "date",
+                              "field": "scrapedAt"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

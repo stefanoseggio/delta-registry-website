@@ -1,0 +1,95 @@
+{
+  "name": "uk-modern-slavery-statement-registry-monitor",
+  "description": "Delta-tracks the official UK Modern Slavery Statement Registry (gov.uk) - 34,000+ organisations, 23,500+ statements - for new statements, compliance-status changes, and missing mandatory disclosures across the six recommended topics. Sourced from the registry's own bulk CSV downloads. Pay-per-event.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "years": {
+        "type": "array",
+        "description": "Which registry years to check this run. The registry publishes one full CSV snapshot per year (2020-2027, confirmed live), each containing every statement submitted for that reporting year. Each run does a cheap HEAD request per selected year first and only downloads/parses a year's full file when its content-hash has actually changed since last run (see README/AGENTS.md) - so selecting more years costs little on unchanged runs, but the FIRST run against a newly-selected year always does a full baseline pass. Defaults to the current year only to keep a first/default run fast and bounded.",
+        "default": [
+          "2026"
+        ],
+        "items": {
+          "type": "string",
+          "enum": [
+            "2020",
+            "2021",
+            "2022",
+            "2023",
+            "2024",
+            "2025",
+            "2026",
+            "2027"
+          ]
+        }
+      },
+      "sectorFilter": {
+        "type": "array",
+        "description": "Deliver only statements from organisations that self-declared this sector. Real values as published by the registry: 'Private' or 'Public'. Leave empty to deliver both. This is a client-side filter applied after parsing (the registry's bulk CSV has no server-side query/filter mechanism - see AGENTS.md section 0), so it does not reduce download size, only which normalized statements are delivered.",
+        "default": [],
+        "items": {
+          "type": "string",
+          "enum": [
+            "Private",
+            "Public"
+          ]
+        }
+      },
+      "turnoverFilter": {
+        "type": "array",
+        "description": "Deliver only statements from organisations that self-declared one of these turnover brackets - the exact real bracket strings used by the registry, confirmed live. Leave empty to deliver all brackets (including organisations that left this optional field blank).",
+        "default": [],
+        "items": {
+          "type": "string",
+          "enum": [
+            "Under £36 million",
+            "£36 million to £60 million",
+            "£60 million to £100 million",
+            "£100 million to £500 million",
+            "Over £500 million"
+          ]
+        }
+      },
+      "onlyMissingDisclosures": {
+        "type": "boolean",
+        "description": "When true, delivers only statements that do NOT cover at least one of the six government-recommended topics (organisational structure, policies, risk assessment, due diligence, training, goals) - i.e. a genuine compliance gap, not just any statement. When false (default), delivers all statements matching the other filters regardless of disclosure completeness.",
+        "default": false
+      },
+      "maxItems": {
+        "type": "integer",
+        "description": "Stops the run once this many changed/new statements have been pushed (and charged, where applicable) across all selected years - this actor's own safety valve. Statements not yet reached when the limit is hit are simply re-evaluated fresh next run. Defaults to 50 so a default/test run completes in well under Apify's automated-test window.",
+        "default": 50,
+        "minimum": 1
+      },
+      "deltaStateName": {
+        "type": "string",
+        "description": "Names the persistent Key-Value Store this run's delta memory (per-statement fingerprints and per-year content-hash cache) lives in. Use a distinct name per independent schedule/filter configuration so they don't share baseline progress. Leave as 'default' for a single schedule.",
+        "default": "default"
+      },
+      "resetState": {
+        "type": "boolean",
+        "description": "When true, ignores all previously-remembered statements and per-year content-hashes for this deltaStateName and re-baselines from scratch (every matched statement becomes a fresh, uncharged BASELINE_SNAPSHOT again, and every selected year is re-downloaded regardless of its content-hash). Use only to deliberately restart monitoring.",
+        "default": false
+      },
+      "onlyNew": {
+        "type": "boolean",
+        "description": "When true (recommended, and the only free-of-charge default), only NEW_STATEMENT and STATEMENT_UPDATED events are delivered - never a snapshot of an unchanged statement or a first-run baseline. When false, every matched statement is delivered every run its year is processed, including BASELINE_SNAPSHOT (first run) and STATEMENT_UNCHANGED rows.",
+        "default": true
+      },
+      "webhookUrl": {
+        "type": "string",
+        "description": "Any HTTPS endpoint that accepts a JSON POST (e.g. a Make/n8n/Zapier catch-hook, or your own service) - receives the full raw event payload with no channel-specific formatting. Independent of, and does not replace, Apify's own platform-level webhook system configurable separately in the Apify Console."
+      },
+      "slackWebhookUrl": {
+        "type": "string",
+        "description": "A Slack Incoming Webhook URL created via a Slack App (Slack's own currently-supported method - see 'Slack Apps' in your workspace settings, then add the 'Incoming Webhooks' feature). Do NOT use the older 'legacy custom integrations' webhook - Slack itself is phasing that specific path out, though existing legacy URLs still deliver today. Receives a formatted Slack Block Kit message on a status-tier change (award-equivalent: a mandatory-disclosure or compliance-status change)."
+      },
+      "teamsWebhookUrl": {
+        "type": "string",
+        "description": "A Microsoft Teams 'Workflows' webhook URL (Teams' current, real mechanism as of 2026 - open a channel, 'Workflows', search the 'When a Teams webhook request is received' template). This is NOT the older Incoming Webhook 'Connector' - Microsoft fully retired Office 365 connectors in Teams in a May 2026 cutover, so a classic connector URL will not work. Receives a formatted Adaptive Card (the current Teams card format) on the same status-tier change trigger as the Slack webhook."
+      }
+    },
+    "required": []
+  }
+}

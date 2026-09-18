@@ -1,0 +1,1206 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — MyFloridaMarketPlace - State Bids Delta JSON Feed",
+    "description": "Monitor Florida state-agency procurement on MyFloridaMarketPlace (MFMP VBS): ITB, RFP, ITN, RFI, RSQ, Single Source and intent-to-award notices with UNSPSC codes, contacts and documents. Server-side filters, delta mode flags new, amended and closed solicitations, normalised dates. Pay per result.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/afSZyXLVcgnLpucyo/runs": {
+      "post": {
+        "operationId": "startFloridaTendersMonitorRun",
+        "summary": "Start an async run of: Monitor Florida state-agency procurement on MyFloridaMarketPlace (MFMP VBS): ITB, RFP, ITN, RFI, RSQ, Single Source and intent-to-award notices with UNSPSC codes, contacts and documents. Server-side filters, delta mode flags new, amended and closed solicitations, normalised dates. Pay per result.",
+        "x-async-pattern-reason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "statuses": {
+                    "type": "array",
+                    "description": "Which advertisement statuses to walk. OPEN is small and cheap (2 pages). Add CLOSED to track awards and to receive STATUS_CHANGE events when an open solicitation closes (131 pages, fetched in parallel; only new or changed records cost anything).",
+                    "default": [
+                      "OPEN"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "CLOSED",
+                        "WITHDRAWN",
+                        "PREVIEW"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "types": {
+                    "type": "array",
+                    "description": "The portal's 10 advertisement types. Select several to get their union. Agency Decision = intent-to-award / award notice (starts the 72-hour protest clock); Single Source = non-competitive purchase notice.",
+                    "default": [],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10"
+                      ]
+                    }
+                  },
+                  "agencyIds": {
+                    "type": "array",
+                    "description": "MFMP organization ids, e.g. 30000021 (FDOT), 30000023 (DCF), 30000029 (AHCA), 30000032 (DMS), 30000026 (DOH), 30000031 (FDLE), 30000018 (DOE), 30000011 (DEP), 30000015 (FDACS), 30000012 (DOC), 30000036 (FWC), 30000039 (DJJ), 30000034 (REV), 30000019 (FSDB), 30000030 (FDC), 30000020 (FDVA), 30000025 (DMA), 30000013 (DLA), 30000033 (DOAH). Every record carries its `organizationId`, so run once without this filter to discover the rest (the portal has no public agency list).",
+                    "default": [],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "agencyNameContains": {
+                    "type": "string",
+                    "description": "Case-insensitive substring on the agency name or short name, e.g. 'Transportation' or 'AHCA'. Applied client-side after the listing is read (cheap - the listing is walked in full anyway)."
+                  },
+                  "titleContains": {
+                    "type": "string",
+                    "description": "Case-insensitive substring on the advertisement title, e.g. 'software' or 'construction'."
+                  },
+                  "commodityCodes": {
+                    "type": "array",
+                    "description": "Exact 8-digit UNSPSC codes, e.g. 83112200 (Enhanced telecommunications services), 43230000 (Software). Several codes = union. The portal matches exact codes only - a prefix such as '43' returns nothing.",
+                    "default": [],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "adNumber": {
+                    "type": "string",
+                    "description": "One specific advertisement, e.g. 16672 or AD-16672 (the numeric part is used).",
+                    "pattern": "^\\s*([A-Za-z]{2,3}-?)?\\d+\\s*$"
+                  },
+                  "agencyAdNumberContains": {
+                    "type": "string",
+                    "description": "Substring on the agency's own reference, e.g. 'DOT-ITB-27' or 'RFP 2526'."
+                  },
+                  "dateFrom": {
+                    "type": "string",
+                    "description": "Only advertisements first published on or after this UTC calendar day: absolute (2026-09-01) or relative ('7 days', '3 months' back from today). A one-day window (from = to) is pushed to the portal; wider windows are applied client-side on the listing. Note: amendments keep the original publish date - use delta mode to catch them."
+                  },
+                  "dateTo": {
+                    "type": "string",
+                    "description": "Upper bound of the publish window (inclusive). Leave empty for 'today'."
+                  },
+                  "openBefore": {
+                    "type": "string",
+                    "description": "Server-side: only advertisements whose open date is on or before this day (absolute or relative). Useful to skip solicitations that have not started accepting responses yet."
+                  },
+                  "closesAfter": {
+                    "type": "string",
+                    "description": "Server-side: only advertisements whose close date is on or after this day (absolute, or relative such as '0 days' for 'still open today'). Great for 'give me only what I can still bid on'."
+                  },
+                  "eventTypes": {
+                    "type": "array",
+                    "description": "NEW_LISTING = an advertisement never delivered before; UPDATED = a known advertisement whose version counter rose (addendum, Q&A, close-date extension, new document); STATUS_CHANGE = a known advertisement whose status changed (e.g. OPEN -> CLOSED; only visible if that status is in 'Statuses').",
+                    "default": [
+                      "NEW_LISTING",
+                      "UPDATED",
+                      "STATUS_CHANGE"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "NEW_LISTING",
+                        "UPDATED",
+                        "STATUS_CHANGE"
+                      ]
+                    }
+                  },
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "Remembers every advertisement it has delivered (id, version, status - per filter set, in a named key-value store) and returns only what is new, amended or status-changed since. The portal has no timestamp sort, so every listing page is re-read on each run (cheap: OPEN is 2 pages, fetched in parallel); detail is fetched only for records that will be delivered. The first run is the baseline: with a small 'Max records' it delivers the most recently published advertisements and treats everything older as history.",
+                    "default": false
+                  },
+                  "deltaStateName": {
+                    "type": "string",
+                    "description": "Optional label for the memory of a monitoring task. Defaults to a fingerprint of your filters, so different schedules never interfere. Set the same name on two tasks to make them share one memory.",
+                    "pattern": "^[A-Za-z0-9-]{1,30}$"
+                  },
+                  "resetState": {
+                    "type": "boolean",
+                    "description": "Forget every previously delivered advertisement for this delta state and re-baseline (the run then returns up to 'Max records' of the most recently published advertisements).",
+                    "default": false
+                  },
+                  "maxItems": {
+                    "type": "integer",
+                    "description": "Hard cap on delivered records (and therefore on cost: you pay per record). Newest-published first; amendments and status changes to known records always come first. In delta mode anything beyond the cap stays unseen and is delivered by the next run.",
+                    "default": 100,
+                    "minimum": 1
+                  },
+                  "fetchDetail": {
+                    "type": "boolean",
+                    "description": "One extra request per delivered record for the description (HTML + plain text), UNSPSC commodity codes, documents with download links, response contact, response due date, last-update timestamp, linked solicitation and indicator flags. Off = listing-only summary records (cheaper 'result-summary' price).",
+                    "default": true
+                  },
+                  "maxConcurrency": {
+                    "type": "integer",
+                    "description": "How many listing pages / detail requests are in flight at once. Detail pages tolerate 10; the listing endpoint starts returning HTTP 429 above about 8 in flight (the Actor backs off and retries), so keep 5 for large backfills.",
+                    "default": 5,
+                    "minimum": 1
+                  },
+                  "dateRange": {
+                    "type": "string",
+                    "description": "Kept for tasks created with version 1: '24h', '7d' or '30d' are interpreted as 'Published from'.",
+                    "pattern": "^(24h|7d|30d)$"
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run started. Poll GET /actor-runs/{runId} with the returned run id until status is SUCCEEDED, then fetch its dataset items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/actor-runs/{runId}": {
+      "get": {
+        "operationId": "getFloridaTendersMonitorRunStatus",
+        "summary": "Poll the status of a previously started run.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current run status. When status is SUCCEEDED, fetch the dataset via GET /datasets/{datasetId}/items, passing this response's defaultDatasetId field as {datasetId}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "defaultDatasetId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/datasets/{datasetId}/items": {
+      "get": {
+        "operationId": "getFloridaTendersMonitorDatasetItems",
+        "summary": "Fetch the dataset items produced by a completed run.",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "actorSpecification": 1,
+                    "title": "MyFloridaMarketPlace advertisements",
+                    "description": "One item per advertisement (solicitation, award notice, grant opportunity or notice) on the MyFloridaMarketPlace Vendor Information Portal. Raw portal values are kept verbatim next to normalised twins (canonical UTC timestamps, Florida wall-clock strings, day counts, plain-text description, flattened contact) so the data drops straight into a CRM, warehouse or spreadsheet. Records are appended oldest-first within a run; read newest-first with ?desc=true.",
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "properties": {
+                        "record_id": {
+                          "type": "string",
+                          "title": "Record ID",
+                          "description": "advertisementId as a string - stable across runs (e.g. \"16672\")."
+                        },
+                        "event_type": {
+                          "type": "string",
+                          "title": "Event type",
+                          "description": "NEW_LISTING, UPDATED (version counter rose: addendum, extension, new document) or STATUS_CHANGE (e.g. OPEN -> CLOSED).",
+                          "enum": [
+                            "NEW_LISTING",
+                            "UPDATED",
+                            "STATUS_CHANGE"
+                          ]
+                        },
+                        "scraped_at": {
+                          "type": "string",
+                          "title": "Scraped at",
+                          "description": "ISO-8601 UTC timestamp of this extraction."
+                        },
+                        "is_new": {
+                          "type": "boolean",
+                          "title": "Is new",
+                          "description": "true when this advertisement was never delivered by a previous run of this delta memory."
+                        },
+                        "source_url": {
+                          "type": "string",
+                          "title": "Source URL",
+                          "description": "The advertisement's page on the portal."
+                        },
+                        "data_source": {
+                          "type": "string",
+                          "title": "Data source",
+                          "description": "Attribution string."
+                        },
+                        "advertisementId": {
+                          "type": "integer",
+                          "title": "Advertisement ID",
+                          "example": 16672
+                        },
+                        "uniqueName": {
+                          "type": "string",
+                          "title": "Display ID",
+                          "description": "e.g. AD-16672, GO-14963.",
+                          "example": "AD-16672"
+                        },
+                        "agencyAdNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Agency ad number",
+                          "description": "The agency's own reference."
+                        },
+                        "title": {
+                          "type": "string",
+                          "title": "Title"
+                        },
+                        "type": {
+                          "type": "string",
+                          "title": "Type",
+                          "description": "Agency Decision, Grant Opportunities, Informational Notice, Invitation to Bid, Invitation to Negotiate, Request for Proposals, Public Meeting Notice, Request for Information, Request for Statement of Qualifications, Single Source."
+                        },
+                        "typeId": {
+                          "type": "string",
+                          "title": "Type ID",
+                          "description": "The `types` filter value (\"1\".\"10\")."
+                        },
+                        "status": {
+                          "type": "string",
+                          "title": "Status",
+                          "enum": [
+                            "OPEN",
+                            "CLOSED",
+                            "WITHDRAWN",
+                            "PREVIEW"
+                          ]
+                        },
+                        "agency": {
+                          "type": "string",
+                          "title": "Agency"
+                        },
+                        "organizationId": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "title": "Organization ID",
+                          "description": "Stable agency id - the `agencyIds` filter value."
+                        },
+                        "organizationShortName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Agency short name",
+                          "example": "FDOT"
+                        },
+                        "organizationEntity": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Agency entity code",
+                          "example": "550000"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "title": "Open date (raw)",
+                          "example": "2026-09-03T20:30:00.000+00:00"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "title": "Close date (raw)"
+                        },
+                        "publishDate": {
+                          "type": "string",
+                          "title": "Publish date (raw)"
+                        },
+                        "publishDateUtc": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Published (UTC)",
+                          "description": "Canonical ISO-8601 Z form."
+                        },
+                        "openDateUtc": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Opens (UTC)"
+                        },
+                        "closeDateUtc": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Closes (UTC)"
+                        },
+                        "publishDateLocal": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Published (Florida time)",
+                          "example": "2026-08-13 13:39 EDT"
+                        },
+                        "openDateLocal": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Opens (Florida time)"
+                        },
+                        "closeDateLocal": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Closes (Florida time)",
+                          "description": "What the vendor reads on the portal: Eastern time with EST/EDT."
+                        },
+                        "publishDay": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Publish day",
+                          "description": "YYYY-MM-DD (UTC) - the granularity of the portal's own date filter."
+                        },
+                        "closeDay": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Close day"
+                        },
+                        "responseWindowDays": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "title": "Response window (days)",
+                          "description": "Whole days between open and close."
+                        },
+                        "daysUntilClose": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "title": "Days until close",
+                          "description": "Negative once closed."
+                        },
+                        "isOpenForResponses": {
+                          "type": "boolean",
+                          "title": "Open for responses",
+                          "description": "status OPEN and close date still in the future at scrape time."
+                        },
+                        "version": {
+                          "type": "integer",
+                          "title": "Version",
+                          "description": "The portal's amendment counter - rises on every agency edit. The delta engine's change key."
+                        },
+                        "isAmended": {
+                          "type": "boolean",
+                          "title": "Is amended",
+                          "description": "version > 1."
+                        },
+                        "previousVersion": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "title": "Previous version",
+                          "description": "Version at the previous delivery (UPDATED / STATUS_CHANGE events)."
+                        },
+                        "previousStatus": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Previous status"
+                        },
+                        "isAwardNotice": {
+                          "type": "boolean",
+                          "title": "Is award notice",
+                          "description": "type = Agency Decision (intent to award / agency decision - starts the 72-hour protest window)."
+                        },
+                        "isSingleSource": {
+                          "type": "boolean",
+                          "title": "Is single source"
+                        },
+                        "detailFetched": {
+                          "type": "boolean",
+                          "title": "Detail fetched",
+                          "description": "false when fetchDetail was off or the detail could not be retrieved (see detailError)."
+                        },
+                        "detailError": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Detail error",
+                          "description": "NOT_FOUND when the portal has no detail for the id; otherwise the failure message."
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Description (HTML)",
+                          "description": "Raw HTML from the portal."
+                        },
+                        "descriptionText": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Description (text)",
+                          "description": "Plain-text rendering with line breaks - ready for search, summarisation or e-mail."
+                        },
+                        "amountsUsd": {
+                          "type": "array",
+                          "title": "Dollar amounts",
+                          "description": "Every $ figure found in the description (the portal has no structured value field).",
+                          "items": {
+                            "type": "number"
+                          }
+                        },
+                        "maxAmountUsd": {
+                          "type": [
+                            "number",
+                            "null"
+                          ],
+                          "title": "Largest amount (USD)"
+                        },
+                        "currency": {
+                          "type": "string",
+                          "title": "Currency",
+                          "example": "USD"
+                        },
+                        "lastUpdateDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Last updated (raw)"
+                        },
+                        "lastUpdateDateUtc": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Last updated (UTC)",
+                          "description": "When the agency last edited the advertisement - amendments do NOT change publishDate."
+                        },
+                        "responseDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Response due (raw)"
+                        },
+                        "responseDateUtc": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Response due (UTC)",
+                          "description": "Proposal / response due date - can differ from closeDate (e.g. a grant RFA closing months after the application deadline)."
+                        },
+                        "responseDateLocal": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Response due (Florida time)"
+                        },
+                        "linkedAdNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Linked advertisement",
+                          "description": "For an Agency Decision: the advertisementId of the original solicitation being awarded."
+                        },
+                        "linkedAdUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Linked advertisement URL"
+                        },
+                        "publishOption": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Publish option",
+                          "example": "Start Immediately"
+                        },
+                        "withdrawn": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "Withdrawn flag",
+                          "description": "The portal's own flag (observed false even on WITHDRAWN records - prefer `status`)."
+                        },
+                        "timeRemainingMs": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "title": "Time remaining (ms)",
+                          "description": "Milliseconds until closeDate as computed by the portal at fetch time (negative once closed)."
+                        },
+                        "indicators": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "title": "Indicators",
+                          "description": "minorityEncouraged, preSolicitationConference, disabilitiesAct, rightToReject, agencyContactPeriod."
+                        },
+                        "minorityEncouraged": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "Minority participation encouraged"
+                        },
+                        "preSolicitationConference": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "Pre-solicitation conference"
+                        },
+                        "disabilitiesAct": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "ADA notice"
+                        },
+                        "rightToReject": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "Right to reject"
+                        },
+                        "agencyContactPeriod": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "Agency contact period"
+                        },
+                        "commodityCodes": {
+                          "type": "array",
+                          "title": "Commodity codes",
+                          "description": "UNSPSC codes with labels.",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "commodityCodeIds": {
+                          "type": "array",
+                          "title": "Commodity code IDs",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "commodityCodesText": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Commodity codes (text)",
+                          "example": "83112200 Enhanced telecommunications services; 83112403 Point to point digital telecommunications circuit"
+                        },
+                        "documents": {
+                          "type": "array",
+                          "title": "Documents",
+                          "description": "Attachments with direct download links (the endpoint needs an Accept: application/json header) and posting dates - addenda appear here with their title.",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "fileName": {
+                                "type": "string"
+                              },
+                              "downloadUrl": {
+                                "type": "string"
+                              },
+                              "attachmentId": {
+                                "type": "integer"
+                              },
+                              "description": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "date": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dateUtc": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "docFor": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        "documentCount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "title": "Document count"
+                        },
+                        "latestDocumentDateUtc": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Latest document posted (UTC)",
+                          "description": "When the most recent attachment (typically the latest addendum) was posted."
+                        },
+                        "responseContact": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "title": "Response contact (raw)",
+                          "description": "responseContact, email, ph, address1, address2, city, state, zip."
+                        },
+                        "contactName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Contact name"
+                        },
+                        "contactEmail": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Contact e-mail"
+                        },
+                        "contactPhone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Contact phone"
+                        },
+                        "contactAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Contact address"
+                        },
+                        "contactCity": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Contact city"
+                        },
+                        "contactState": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Contact state"
+                        },
+                        "contactZip": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Contact ZIP"
+                        }
+                      }
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "description": "Newest activity first: what was posted or amended, by whom, and when it closes.",
+                        "transformation": {
+                          "fields": [
+                            "event_type",
+                            "uniqueName",
+                            "title",
+                            "type",
+                            "organizationShortName",
+                            "status",
+                            "publishDateUtc",
+                            "closeDateUtc",
+                            "daysUntilClose",
+                            "version",
+                            "documentCount",
+                            "source_url"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "event_type": {
+                              "label": "Event",
+                              "format": "text"
+                            },
+                            "uniqueName": {
+                              "label": "ID",
+                              "format": "text"
+                            },
+                            "title": {
+                              "label": "Title",
+                              "format": "text"
+                            },
+                            "type": {
+                              "label": "Type",
+                              "format": "text"
+                            },
+                            "organizationShortName": {
+                              "label": "Agency",
+                              "format": "text"
+                            },
+                            "status": {
+                              "label": "Status",
+                              "format": "text"
+                            },
+                            "publishDateUtc": {
+                              "label": "Published",
+                              "format": "date"
+                            },
+                            "closeDateUtc": {
+                              "label": "Closes",
+                              "format": "date"
+                            },
+                            "daysUntilClose": {
+                              "label": "Days left",
+                              "format": "number"
+                            },
+                            "version": {
+                              "label": "Version",
+                              "format": "number"
+                            },
+                            "documentCount": {
+                              "label": "Docs",
+                              "format": "number"
+                            },
+                            "source_url": {
+                              "label": "Portal",
+                              "format": "link"
+                            }
+                          }
+                        }
+                      },
+                      "bidPipeline": {
+                        "title": "Bid pipeline",
+                        "description": "Bid / no-bid view: what is open for responses, when it is due, the commodity codes and the contact.",
+                        "transformation": {
+                          "fields": [
+                            "uniqueName",
+                            "title",
+                            "type",
+                            "agency",
+                            "isOpenForResponses",
+                            "closeDateLocal",
+                            "responseDateLocal",
+                            "daysUntilClose",
+                            "commodityCodesText",
+                            "contactName",
+                            "contactEmail",
+                            "maxAmountUsd"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "uniqueName": {
+                              "label": "ID",
+                              "format": "text"
+                            },
+                            "title": {
+                              "label": "Title",
+                              "format": "text"
+                            },
+                            "type": {
+                              "label": "Type",
+                              "format": "text"
+                            },
+                            "agency": {
+                              "label": "Agency",
+                              "format": "text"
+                            },
+                            "isOpenForResponses": {
+                              "label": "Open",
+                              "format": "boolean"
+                            },
+                            "closeDateLocal": {
+                              "label": "Closes (ET)",
+                              "format": "text"
+                            },
+                            "responseDateLocal": {
+                              "label": "Response due (ET)",
+                              "format": "text"
+                            },
+                            "daysUntilClose": {
+                              "label": "Days left",
+                              "format": "number"
+                            },
+                            "commodityCodesText": {
+                              "label": "UNSPSC",
+                              "format": "text"
+                            },
+                            "contactName": {
+                              "label": "Contact",
+                              "format": "text"
+                            },
+                            "contactEmail": {
+                              "label": "E-mail",
+                              "format": "text"
+                            },
+                            "maxAmountUsd": {
+                              "label": "Largest $ in text",
+                              "format": "number"
+                            }
+                          }
+                        }
+                      },
+                      "amendments": {
+                        "title": "Amendments & status changes",
+                        "description": "Delta-mode events on known advertisements: version and status moves, when the agency last edited, and the newest document.",
+                        "transformation": {
+                          "fields": [
+                            "event_type",
+                            "uniqueName",
+                            "title",
+                            "previousVersion",
+                            "version",
+                            "previousStatus",
+                            "status",
+                            "lastUpdateDateUtc",
+                            "latestDocumentDateUtc",
+                            "documentCount",
+                            "closeDateUtc",
+                            "source_url"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "event_type": {
+                              "label": "Event",
+                              "format": "text"
+                            },
+                            "uniqueName": {
+                              "label": "ID",
+                              "format": "text"
+                            },
+                            "title": {
+                              "label": "Title",
+                              "format": "text"
+                            },
+                            "previousVersion": {
+                              "label": "Was v",
+                              "format": "number"
+                            },
+                            "version": {
+                              "label": "Now v",
+                              "format": "number"
+                            },
+                            "previousStatus": {
+                              "label": "Was",
+                              "format": "text"
+                            },
+                            "status": {
+                              "label": "Now",
+                              "format": "text"
+                            },
+                            "lastUpdateDateUtc": {
+                              "label": "Last edited",
+                              "format": "date"
+                            },
+                            "latestDocumentDateUtc": {
+                              "label": "Latest document",
+                              "format": "date"
+                            },
+                            "documentCount": {
+                              "label": "Docs",
+                              "format": "number"
+                            },
+                            "closeDateUtc": {
+                              "label": "Closes",
+                              "format": "date"
+                            },
+                            "source_url": {
+                              "label": "Portal",
+                              "format": "link"
+                            }
+                          }
+                        }
+                      },
+                      "awards": {
+                        "title": "Awards & single source",
+                        "description": "Agency Decisions (intent to award) with the linked original solicitation, and Single Source notices - the 72-hour protest watch.",
+                        "transformation": {
+                          "fields": [
+                            "uniqueName",
+                            "type",
+                            "title",
+                            "agency",
+                            "publishDateUtc",
+                            "closeDateUtc",
+                            "linkedAdNumber",
+                            "linkedAdUrl",
+                            "maxAmountUsd",
+                            "contactEmail",
+                            "source_url"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "uniqueName": {
+                              "label": "ID",
+                              "format": "text"
+                            },
+                            "type": {
+                              "label": "Type",
+                              "format": "text"
+                            },
+                            "title": {
+                              "label": "Title",
+                              "format": "text"
+                            },
+                            "agency": {
+                              "label": "Agency",
+                              "format": "text"
+                            },
+                            "publishDateUtc": {
+                              "label": "Posted",
+                              "format": "date"
+                            },
+                            "closeDateUtc": {
+                              "label": "Protest window ends",
+                              "format": "date"
+                            },
+                            "linkedAdNumber": {
+                              "label": "Original solicitation",
+                              "format": "text"
+                            },
+                            "linkedAdUrl": {
+                              "label": "Original",
+                              "format": "link"
+                            },
+                            "maxAmountUsd": {
+                              "label": "Largest $ in text",
+                              "format": "number"
+                            },
+                            "contactEmail": {
+                              "label": "Contact",
+                              "format": "text"
+                            },
+                            "source_url": {
+                              "label": "Portal",
+                              "format": "link"
+                            }
+                          }
+                        }
+                      },
+                      "contacts": {
+                        "title": "Agency contacts",
+                        "description": "Procurement officers by agency - CRM-ready.",
+                        "transformation": {
+                          "fields": [
+                            "agency",
+                            "organizationId",
+                            "contactName",
+                            "contactEmail",
+                            "contactPhone",
+                            "contactCity",
+                            "contactState",
+                            "contactZip",
+                            "uniqueName",
+                            "title"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "agency": {
+                              "label": "Agency",
+                              "format": "text"
+                            },
+                            "organizationId": {
+                              "label": "Org ID",
+                              "format": "number"
+                            },
+                            "contactName": {
+                              "label": "Contact",
+                              "format": "text"
+                            },
+                            "contactEmail": {
+                              "label": "E-mail",
+                              "format": "text"
+                            },
+                            "contactPhone": {
+                              "label": "Phone",
+                              "format": "text"
+                            },
+                            "contactCity": {
+                              "label": "City",
+                              "format": "text"
+                            },
+                            "contactState": {
+                              "label": "State",
+                              "format": "text"
+                            },
+                            "contactZip": {
+                              "label": "ZIP",
+                              "format": "text"
+                            },
+                            "uniqueName": {
+                              "label": "Ad",
+                              "format": "text"
+                            },
+                            "title": {
+                              "label": "Title",
+                              "format": "text"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

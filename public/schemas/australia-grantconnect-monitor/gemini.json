@@ -1,0 +1,139 @@
+{
+  "functionDeclarations": [
+    {
+      "name": "australia-grantconnect-monitor",
+      "description": "Monitor every Australian Government grant award on GrantConnect (grants.gov.au): recipient, ABN, agency, value, purpose, program and location. Server-side filters (keyword, category, ABN, value, dates), delta mode flags new, varied and updated awards, ISO dates, numeric AUD. Pay per result.",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "keyword": {
+            "type": "STRING",
+            "description": "Full-text search over grant title, purpose and activity (also accepts a GA ID such as GA578886). Matching mode below."
+          },
+          "keywordMatch": {
+            "type": "STRING",
+            "description": "How the keyword(s) must match. Default \"AllWord\" if omitted.",
+            "enum": [
+              "AllWord",
+              "AnyWord",
+              "ExactPhrase"
+            ]
+          },
+          "categories": {
+            "type": "ARRAY",
+            "description": "GrantConnect's 29 top-level categories. Select several to get their union. The record's own 'category' field shows the finer sub-category label (e.g. 'Medical Research'). Default [] if omitted.",
+            "items": {
+              "type": "STRING"
+            }
+          },
+          "agencyNameContains": {
+            "type": "STRING",
+            "description": "Case-insensitive substring match on the awarding agency, e.g. 'Health' or 'Infrastructure'. Applied client-side (GrantConnect's public form has no agency parameter), so combine it with a category, keyword or date window to keep the walk short."
+          },
+          "recipientName": {
+            "type": "STRING",
+            "description": "Substring match on the recipient's legal name, e.g. 'Monash University' or 'Regional Express'."
+          },
+          "recipientAbn": {
+            "type": "STRING",
+            "description": "Exact match on the recipient's 11-digit Australian Business Number (spaces optional). Returns every Commonwealth grant that entity has received."
+          },
+          "minValueAud": {
+            "type": "INTEGER",
+            "description": "Only awards worth at least this amount. Tip: 1000000 narrows the 360,000-record register to roughly 28,000."
+          },
+          "maxValueAud": {
+            "type": "INTEGER",
+            "description": "Only awards worth at most this amount."
+          },
+          "goId": {
+            "type": "STRING",
+            "description": "All awards made under one Grant Opportunity (funding round), e.g. GO6105."
+          },
+          "dateType": {
+            "type": "STRING",
+            "description": "Which date the 'from'/'to' window applies to. 'Current' = grants running today and 'Closed' = grants whose term has ended (both ignore the window). Default \"Publish Date\" if omitted.",
+            "enum": [
+              "Publish Date",
+              "Approval Date",
+              "Start Date",
+              "End Date",
+              "Current",
+              "Closed"
+            ]
+          },
+          "dateFrom": {
+            "type": "STRING",
+            "description": "Absolute (2026-07-01) or relative ('7 days', '3 months', '1 year' back from today, Canberra time). Leave empty for the whole archive (December 2017 onwards)."
+          },
+          "dateTo": {
+            "type": "STRING",
+            "description": "Absolute or relative upper bound of the window. Leave empty for 'today'."
+          },
+          "oneOffAdHoc": {
+            "type": "STRING",
+            "description": "Ad hoc grants (no competitive round) are the ones probity and integrity teams watch most closely. Default \"any\" if omitted.",
+            "enum": [
+              "any",
+              "yes",
+              "no"
+            ]
+          },
+          "aggregateGrantAward": {
+            "type": "STRING",
+            "description": "Aggregate awards bundle several recipients into one record ('Multiple'). Default \"any\" if omitted.",
+            "enum": [
+              "any",
+              "yes",
+              "no"
+            ]
+          },
+          "eventTypes": {
+            "type": "ARRAY",
+            "description": "NEW_LISTING = a brand-new award; AWARD_VARIATION = a variation/amendment record (value or term changed, e.g. GA270901-V1); UPDATED = an award you already received whose 'Last Updated' stamp moved (delta mode only). Default [\"NEW_LISTING\",\"AWARD_VARIATION\",\"UPDATED\"] if omitted.",
+            "items": {
+              "type": "STRING"
+            }
+          },
+          "onlyNew": {
+            "type": "BOOLEAN",
+            "description": "Remembers every award it has delivered (per filter set, in a named key-value store) and returns only awards that are new, varied or updated since. The walk stops as soon as it reaches already-known records, so a scheduled run costs a few pages instead of the whole register. Default false if omitted."
+          },
+          "sortBy": {
+            "type": "STRING",
+            "description": "'Last updated' (recommended, and required for reliable monitoring): variations and corrections of old awards keep their original publish date, so only this order surfaces them. 'Relevance' needs a keyword. Default \"Last Updated\" if omitted.",
+            "enum": [
+              "Last Updated",
+              "Publish Date",
+              "Relevance"
+            ]
+          },
+          "deltaStateName": {
+            "type": "STRING",
+            "description": "Optional label for the memory of a monitoring task. Defaults to a fingerprint of your filters, so different schedules never interfere. Set the same name on two tasks to make them share one memory."
+          },
+          "resetState": {
+            "type": "BOOLEAN",
+            "description": "Forget every previously delivered award for this delta state and re-baseline (the run then returns up to 'Max records' most recently updated awards). Default false if omitted."
+          },
+          "maxItems": {
+            "type": "INTEGER",
+            "description": "Hard cap on delivered records (and therefore on cost: you pay per record). In delta mode anything beyond the cap is simply delivered by the next run. Default 100 if omitted."
+          },
+          "fetchDetail": {
+            "type": "BOOLEAN",
+            "description": "Opens each award's page (one extra request) for recipient ABN and location, delivery location, purpose, program, Grant Opportunity link, selection process, confidentiality flags and the agency contact. Off = listing-only summary records (cheaper 'result-summary' price). Default true if omitted."
+          },
+          "maxConcurrency": {
+            "type": "INTEGER",
+            "description": "How many award pages are fetched at once. GrantConnect tolerates 10 comfortably; 5 keeps a 500-record run under two minutes. Default 5 if omitted."
+          },
+          "dateRange": {
+            "type": "STRING",
+            "description": "Kept for tasks created with version 1: '24h', '7d' or '30d' are interpreted as 'Date from'."
+          }
+        }
+      }
+    }
+  ]
+}

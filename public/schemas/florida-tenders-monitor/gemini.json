@@ -1,0 +1,109 @@
+{
+  "functionDeclarations": [
+    {
+      "name": "florida-tenders-monitor",
+      "description": "Monitor Florida state-agency procurement on MyFloridaMarketPlace (MFMP VBS): ITB, RFP, ITN, RFI, RSQ, Single Source and intent-to-award notices with UNSPSC codes, contacts and documents. Server-side filters, delta mode flags new, amended and closed solicitations, normalised dates. Pay per result.",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "statuses": {
+            "type": "ARRAY",
+            "description": "Which advertisement statuses to walk. OPEN is small and cheap (2 pages). Add CLOSED to track awards and to receive STATUS_CHANGE events when an open solicitation closes (131 pages, fetched in parallel; only new or changed records cost anything). Default [\"OPEN\"] if omitted.",
+            "items": {
+              "type": "STRING"
+            },
+            "minItems": 1
+          },
+          "types": {
+            "type": "ARRAY",
+            "description": "The portal's 10 advertisement types. Select several to get their union. Agency Decision = intent-to-award / award notice (starts the 72-hour protest clock); Single Source = non-competitive purchase notice. Default [] if omitted.",
+            "items": {
+              "type": "STRING"
+            }
+          },
+          "agencyIds": {
+            "type": "ARRAY",
+            "description": "MFMP organization ids, e.g. 30000021 (FDOT), 30000023 (DCF), 30000029 (AHCA), 30000032 (DMS), 30000026 (DOH), 30000031 (FDLE), 30000018 (DOE), 30000011 (DEP), 30000015 (FDACS), 30000012 (DOC), 30000036 (FWC), 30000039 (DJJ), 30000034 (REV), 30000019 (FSDB), 30000030 (FDC), 30000020 (FDVA), 30000025 (DMA), 30000013 (DLA), 30000033 (DOAH). Every record carries its `organizationId`, so run once without this filter to discover the rest (the portal has no public agency list). Default [] if omitted.",
+            "items": {
+              "type": "STRING"
+            }
+          },
+          "agencyNameContains": {
+            "type": "STRING",
+            "description": "Case-insensitive substring on the agency name or short name, e.g. 'Transportation' or 'AHCA'. Applied client-side after the listing is read (cheap - the listing is walked in full anyway)."
+          },
+          "titleContains": {
+            "type": "STRING",
+            "description": "Case-insensitive substring on the advertisement title, e.g. 'software' or 'construction'."
+          },
+          "commodityCodes": {
+            "type": "ARRAY",
+            "description": "Exact 8-digit UNSPSC codes, e.g. 83112200 (Enhanced telecommunications services), 43230000 (Software). Several codes = union. The portal matches exact codes only - a prefix such as '43' returns nothing. Default [] if omitted.",
+            "items": {
+              "type": "STRING"
+            }
+          },
+          "adNumber": {
+            "type": "STRING",
+            "description": "One specific advertisement, e.g. 16672 or AD-16672 (the numeric part is used)."
+          },
+          "agencyAdNumberContains": {
+            "type": "STRING",
+            "description": "Substring on the agency's own reference, e.g. 'DOT-ITB-27' or 'RFP 2526'."
+          },
+          "dateFrom": {
+            "type": "STRING",
+            "description": "Only advertisements first published on or after this UTC calendar day: absolute (2026-09-01) or relative ('7 days', '3 months' back from today). A one-day window (from = to) is pushed to the portal; wider windows are applied client-side on the listing. Note: amendments keep the original publish date - use delta mode to catch them."
+          },
+          "dateTo": {
+            "type": "STRING",
+            "description": "Upper bound of the publish window (inclusive). Leave empty for 'today'."
+          },
+          "openBefore": {
+            "type": "STRING",
+            "description": "Server-side: only advertisements whose open date is on or before this day (absolute or relative). Useful to skip solicitations that have not started accepting responses yet."
+          },
+          "closesAfter": {
+            "type": "STRING",
+            "description": "Server-side: only advertisements whose close date is on or after this day (absolute, or relative such as '0 days' for 'still open today'). Great for 'give me only what I can still bid on'."
+          },
+          "eventTypes": {
+            "type": "ARRAY",
+            "description": "NEW_LISTING = an advertisement never delivered before; UPDATED = a known advertisement whose version counter rose (addendum, Q&A, close-date extension, new document); STATUS_CHANGE = a known advertisement whose status changed (e.g. OPEN -> CLOSED; only visible if that status is in 'Statuses'). Default [\"NEW_LISTING\",\"UPDATED\",\"STATUS_CHANGE\"] if omitted.",
+            "items": {
+              "type": "STRING"
+            }
+          },
+          "onlyNew": {
+            "type": "BOOLEAN",
+            "description": "Remembers every advertisement it has delivered (id, version, status - per filter set, in a named key-value store) and returns only what is new, amended or status-changed since. The portal has no timestamp sort, so every listing page is re-read on each run (cheap: OPEN is 2 pages, fetched in parallel); detail is fetched only for records that will be delivered. The first run is the baseline: with a small 'Max records' it delivers the most recently published advertisements and treats everything older as history. Default false if omitted."
+          },
+          "deltaStateName": {
+            "type": "STRING",
+            "description": "Optional label for the memory of a monitoring task. Defaults to a fingerprint of your filters, so different schedules never interfere. Set the same name on two tasks to make them share one memory."
+          },
+          "resetState": {
+            "type": "BOOLEAN",
+            "description": "Forget every previously delivered advertisement for this delta state and re-baseline (the run then returns up to 'Max records' of the most recently published advertisements). Default false if omitted."
+          },
+          "maxItems": {
+            "type": "INTEGER",
+            "description": "Hard cap on delivered records (and therefore on cost: you pay per record). Newest-published first; amendments and status changes to known records always come first. In delta mode anything beyond the cap stays unseen and is delivered by the next run. Default 100 if omitted."
+          },
+          "fetchDetail": {
+            "type": "BOOLEAN",
+            "description": "One extra request per delivered record for the description (HTML + plain text), UNSPSC commodity codes, documents with download links, response contact, response due date, last-update timestamp, linked solicitation and indicator flags. Off = listing-only summary records (cheaper 'result-summary' price). Default true if omitted."
+          },
+          "maxConcurrency": {
+            "type": "INTEGER",
+            "description": "How many listing pages / detail requests are in flight at once. Detail pages tolerate 10; the listing endpoint starts returning HTTP 429 above about 8 in flight (the Actor backs off and retries), so keep 5 for large backfills. Default 5 if omitted."
+          },
+          "dateRange": {
+            "type": "STRING",
+            "description": "Kept for tasks created with version 1: '24h', '7d' or '30d' are interpreted as 'Published from'."
+          }
+        }
+      }
+    }
+  ]
+}

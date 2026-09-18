@@ -1,0 +1,131 @@
+{
+  "type": "function",
+  "name": "entrerios-compras-monitor",
+  "description": "Extracts the full public tender backlog of the Province of Entre Rios, Argentina's Unidad Central de Contrataciones - 5,505 records verified live, back to at least 2004 - with organism, objeto, and status detail, and flags new, status-changed, and closed tenders across scheduled runs.",
+  "strict": true,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "estado": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "Filter by process status. Leave blank (default) to pull every status in one request - the site's own union of all 4, verified live to be far larger than any single status alone. Default \"\" if omitted.",
+        "enum": [
+          "",
+          "1",
+          "2",
+          "3",
+          "4"
+        ]
+      },
+      "tipoLicitacion": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "Filter by contracting procedure type. Leave blank for all types. Default \"\" if omitted.",
+        "enum": [
+          "",
+          "1",
+          "2",
+          "3",
+          "4"
+        ]
+      },
+      "organismo": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "Filter by issuing organism. Leave blank for all organisms. Default \"\" if omitted.",
+        "enum": [
+          "",
+          "1",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9"
+        ]
+      },
+      "anio": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "Filter by year, e.g. \"2025\". Leave blank for all years (data goes back to at least 2004). Default \"\" if omitted."
+      },
+      "palabra": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "Free-text keyword filter, matched server-side the same way the site's own \"Palabra\" search box works. Default \"\" if omitted."
+      },
+      "maxItems": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "description": "Hard cap on the number of tenders returned this run. The full unfiltered backlog is over 5000 rows (verified live) - narrow with the filters above or raise this cap to pull all of it. Default 1000 if omitted.",
+        "minimum": 1
+      },
+      "onlyNew": {
+        "type": [
+          "boolean",
+          "null"
+        ],
+        "description": "For recurring/scheduled runs: return only tenders that are new, changed estado, or closed since a prior run of this actor (tracked in a named key-value store scoped to this actor, so it survives between scheduled runs). This source is fetched as a single unfiltered POST covering the entire backlog rather than genuine, reliably newest-first pagination (verified live - see AGENTS.md), so enabling this does NOT reduce fetch time or request volume: the full backlog is still fetched every run either way, and this only changes which records get pushed to the dataset afterward. Default false if omitted."
+      },
+      "eventTypes": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "Which kinds of change to deliver when 'Only new records' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = seen before, estado changed - free to detect, record_id's own hash excludes estado on purpose. CLOSED = a previously-seen record_id is absent from this run's fetch - only computed on an UNFILTERED run (no status/type/organism/year/keyword filter set), since a filtered run's fetch is a subset of the register, not the whole thing; skipped otherwise. Default [\"NEW_LISTING\",\"STATUS_CHANGE\",\"CLOSED\"] if omitted.",
+        "items": {
+          "type": "string",
+          "enum": [
+            "NEW_LISTING",
+            "STATUS_CHANGE",
+            "CLOSED"
+          ],
+          "enumTitles": [
+            "NEW_LISTING - never seen before",
+            "STATUS_CHANGE - estado changed",
+            "CLOSED - no longer in the register"
+          ]
+        }
+      },
+      "dateRange": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "Filters to a source's own natural per-record date field, where one of this portfolio's monitor actors has one. This source (Entre Rios' tender listing) publishes NO per-record date field anywhere - not on the listing, not on any detail page (there isn't one) - verified live against the real page (see AGENTS.md). Setting this has NO effect on the results returned; the actor logs a warning instead of silently applying a misleading filter. Present only for input-shape consistency with the rest of the portfolio. Default \"\" if omitted.",
+        "enum": [
+          "",
+          "24h",
+          "7d",
+          "30d"
+        ]
+      }
+    },
+    "required": [
+      "estado",
+      "tipoLicitacion",
+      "organismo",
+      "anio",
+      "palabra",
+      "maxItems",
+      "onlyNew",
+      "eventTypes",
+      "dateRange"
+    ],
+    "additionalProperties": false
+  }
+}

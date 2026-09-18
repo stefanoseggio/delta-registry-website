@@ -1,0 +1,1303 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — GrantConnect grants.gov.au - Grant Awards Delta Feed",
+    "description": "Monitor every Australian Government grant award on GrantConnect (grants.gov.au): recipient, ABN, agency, value, purpose, program and location. Server-side filters (keyword, category, ABN, value, dates), delta mode flags new, varied and updated awards, ISO dates, numeric AUD. Pay per result.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/gt7wS4T0uFRXDz49n/runs": {
+      "post": {
+        "operationId": "startAustraliaGrantconnectMonitorRun",
+        "summary": "Start an async run of: Monitor every Australian Government grant award on GrantConnect (grants.gov.au): recipient, ABN, agency, value, purpose, program and location. Server-side filters (keyword, category, ABN, value, dates), delta mode flags new, varied and updated awards, ISO dates, numeric AUD. Pay per result.",
+        "x-async-pattern-reason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "keyword": {
+                    "type": "string",
+                    "description": "Full-text search over grant title, purpose and activity (also accepts a GA ID such as GA578886). Matching mode below."
+                  },
+                  "keywordMatch": {
+                    "type": "string",
+                    "description": "How the keyword(s) must match.",
+                    "default": "AllWord",
+                    "enum": [
+                      "AllWord",
+                      "AnyWord",
+                      "ExactPhrase"
+                    ]
+                  },
+                  "categories": {
+                    "type": "array",
+                    "description": "GrantConnect's 29 top-level categories. Select several to get their union. The record's own 'category' field shows the finer sub-category label (e.g. 'Medical Research').",
+                    "default": [],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "381",
+                        "101",
+                        "111",
+                        "121",
+                        "131",
+                        "141",
+                        "151",
+                        "161",
+                        "371",
+                        "171",
+                        "181",
+                        "191",
+                        "201",
+                        "211",
+                        "221",
+                        "231",
+                        "241",
+                        "251",
+                        "261",
+                        "271",
+                        "281",
+                        "291",
+                        "301",
+                        "311",
+                        "321",
+                        "331",
+                        "341",
+                        "351",
+                        "361"
+                      ]
+                    }
+                  },
+                  "agencyNameContains": {
+                    "type": "string",
+                    "description": "Case-insensitive substring match on the awarding agency, e.g. 'Health' or 'Infrastructure'. Applied client-side (GrantConnect's public form has no agency parameter), so combine it with a category, keyword or date window to keep the walk short."
+                  },
+                  "recipientName": {
+                    "type": "string",
+                    "description": "Substring match on the recipient's legal name, e.g. 'Monash University' or 'Regional Express'."
+                  },
+                  "recipientAbn": {
+                    "type": "string",
+                    "description": "Exact match on the recipient's 11-digit Australian Business Number (spaces optional). Returns every Commonwealth grant that entity has received.",
+                    "pattern": "^\\s*\\d{2}\\s?\\d{3}\\s?\\d{3}\\s?\\d{3}\\s*$"
+                  },
+                  "minValueAud": {
+                    "type": "integer",
+                    "description": "Only awards worth at least this amount. Tip: 1000000 narrows the 360,000-record register to roughly 28,000.",
+                    "minimum": 0
+                  },
+                  "maxValueAud": {
+                    "type": "integer",
+                    "description": "Only awards worth at most this amount.",
+                    "minimum": 0
+                  },
+                  "goId": {
+                    "type": "string",
+                    "description": "All awards made under one Grant Opportunity (funding round), e.g. GO6105.",
+                    "pattern": "^\\s*[Gg][Oo]\\d+\\s*$"
+                  },
+                  "dateType": {
+                    "type": "string",
+                    "description": "Which date the 'from'/'to' window applies to. 'Current' = grants running today and 'Closed' = grants whose term has ended (both ignore the window).",
+                    "default": "Publish Date",
+                    "enum": [
+                      "Publish Date",
+                      "Approval Date",
+                      "Start Date",
+                      "End Date",
+                      "Current",
+                      "Closed"
+                    ]
+                  },
+                  "dateFrom": {
+                    "type": "string",
+                    "description": "Absolute (2026-07-01) or relative ('7 days', '3 months', '1 year' back from today, Canberra time). Leave empty for the whole archive (December 2017 onwards)."
+                  },
+                  "dateTo": {
+                    "type": "string",
+                    "description": "Absolute or relative upper bound of the window. Leave empty for 'today'."
+                  },
+                  "oneOffAdHoc": {
+                    "type": "string",
+                    "description": "Ad hoc grants (no competitive round) are the ones probity and integrity teams watch most closely.",
+                    "default": "any",
+                    "enum": [
+                      "any",
+                      "yes",
+                      "no"
+                    ]
+                  },
+                  "aggregateGrantAward": {
+                    "type": "string",
+                    "description": "Aggregate awards bundle several recipients into one record ('Multiple').",
+                    "default": "any",
+                    "enum": [
+                      "any",
+                      "yes",
+                      "no"
+                    ]
+                  },
+                  "eventTypes": {
+                    "type": "array",
+                    "description": "NEW_LISTING = a brand-new award; AWARD_VARIATION = a variation/amendment record (value or term changed, e.g. GA270901-V1); UPDATED = an award you already received whose 'Last Updated' stamp moved (delta mode only).",
+                    "default": [
+                      "NEW_LISTING",
+                      "AWARD_VARIATION",
+                      "UPDATED"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "NEW_LISTING",
+                        "AWARD_VARIATION",
+                        "UPDATED"
+                      ]
+                    }
+                  },
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "Remembers every award it has delivered (per filter set, in a named key-value store) and returns only awards that are new, varied or updated since. The walk stops as soon as it reaches already-known records, so a scheduled run costs a few pages instead of the whole register.",
+                    "default": false
+                  },
+                  "sortBy": {
+                    "type": "string",
+                    "description": "'Last updated' (recommended, and required for reliable monitoring): variations and corrections of old awards keep their original publish date, so only this order surfaces them. 'Relevance' needs a keyword.",
+                    "default": "Last Updated",
+                    "enum": [
+                      "Last Updated",
+                      "Publish Date",
+                      "Relevance"
+                    ]
+                  },
+                  "deltaStateName": {
+                    "type": "string",
+                    "description": "Optional label for the memory of a monitoring task. Defaults to a fingerprint of your filters, so different schedules never interfere. Set the same name on two tasks to make them share one memory.",
+                    "pattern": "^[A-Za-z0-9-]{1,30}$"
+                  },
+                  "resetState": {
+                    "type": "boolean",
+                    "description": "Forget every previously delivered award for this delta state and re-baseline (the run then returns up to 'Max records' most recently updated awards).",
+                    "default": false
+                  },
+                  "maxItems": {
+                    "type": "integer",
+                    "description": "Hard cap on delivered records (and therefore on cost: you pay per record). In delta mode anything beyond the cap is simply delivered by the next run.",
+                    "default": 100,
+                    "minimum": 1
+                  },
+                  "fetchDetail": {
+                    "type": "boolean",
+                    "description": "Opens each award's page (one extra request) for recipient ABN and location, delivery location, purpose, program, Grant Opportunity link, selection process, confidentiality flags and the agency contact. Off = listing-only summary records (cheaper 'result-summary' price).",
+                    "default": true
+                  },
+                  "maxConcurrency": {
+                    "type": "integer",
+                    "description": "How many award pages are fetched at once. GrantConnect tolerates 10 comfortably; 5 keeps a 500-record run under two minutes.",
+                    "default": 5,
+                    "minimum": 1
+                  },
+                  "dateRange": {
+                    "type": "string",
+                    "description": "Kept for tasks created with version 1: '24h', '7d' or '30d' are interpreted as 'Date from'.",
+                    "pattern": "^(24h|7d|30d)$"
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run started. Poll GET /actor-runs/{runId} with the returned run id until status is SUCCEEDED, then fetch its dataset items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/actor-runs/{runId}": {
+      "get": {
+        "operationId": "getAustraliaGrantconnectMonitorRunStatus",
+        "summary": "Poll the status of a previously started run.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current run status. When status is SUCCEEDED, fetch the dataset via GET /datasets/{datasetId}/items, passing this response's defaultDatasetId field as {datasetId}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "defaultDatasetId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/datasets/{datasetId}/items": {
+      "get": {
+        "operationId": "getAustraliaGrantconnectMonitorDatasetItems",
+        "summary": "Fetch the dataset items produced by a completed run.",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "actorSpecification": 1,
+                    "title": "GrantConnect Grant Awards",
+                    "description": "One item per Grant Award record from GrantConnect (grants.gov.au). Raw site strings are kept verbatim next to normalised siblings (ISO dates, numeric AUD, 11-digit ABN) so the data drops straight into a warehouse, CRM or spreadsheet. Records are appended oldest-first within a run; read newest-first with ?desc=true.",
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "properties": {
+                        "record_id": {
+                          "type": "string",
+                          "title": "Record ID",
+                          "description": "Same value as gaId - stable across runs (e.g. GA578886, GA270901-V1 for a variation)."
+                        },
+                        "event_type": {
+                          "type": "string",
+                          "title": "Event type",
+                          "description": "NEW_LISTING, AWARD_VARIATION or UPDATED (a previously delivered award whose Last Updated stamp moved).",
+                          "enum": [
+                            "NEW_LISTING",
+                            "AWARD_VARIATION",
+                            "UPDATED"
+                          ]
+                        },
+                        "scraped_at": {
+                          "type": "string",
+                          "title": "Scraped at",
+                          "description": "ISO-8601 UTC timestamp of this extraction."
+                        },
+                        "is_new": {
+                          "type": "boolean",
+                          "title": "Is new",
+                          "description": "true when this award was never delivered by a previous run of this delta state."
+                        },
+                        "source_url": {
+                          "type": "string",
+                          "title": "Source URL",
+                          "description": "The official GrantConnect record page."
+                        },
+                        "data_source": {
+                          "type": "string",
+                          "title": "Data source",
+                          "description": "Attribution string (CC BY 3.0 AU)."
+                        },
+                        "gaId": {
+                          "type": "string",
+                          "title": "GA ID",
+                          "example": "GA578886"
+                        },
+                        "gaUuid": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "GA UUID",
+                          "description": "Stable identifier from the record URL."
+                        },
+                        "isVariation": {
+                          "type": "boolean",
+                          "title": "Is variation"
+                        },
+                        "variationNumber": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "title": "Variation number",
+                          "description": "1 for GA270901-V1."
+                        },
+                        "baseGaId": {
+                          "type": "string",
+                          "title": "Base GA ID",
+                          "description": "The original award this record belongs to (equals gaId for a base award)."
+                        },
+                        "variesGaId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Varies GA ID"
+                        },
+                        "variesUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Varies URL"
+                        },
+                        "title": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Title",
+                          "description": "Grant Activity title as shown on the listing."
+                        },
+                        "agency": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Agency",
+                          "description": "Awarding agency name as recorded at publication."
+                        },
+                        "category": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Category",
+                          "description": "GrantConnect sub-category label, e.g. 'Medical Research'."
+                        },
+                        "publishDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Publish date (raw)",
+                          "example": "4-Sep-2026"
+                        },
+                        "grantTerm": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Grant term (raw)",
+                          "example": "4-Sep-2026 to 30-Nov-2027"
+                        },
+                        "valueAud": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Value AUD (raw)",
+                          "example": "$225,000.00"
+                        },
+                        "recipientName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Recipient name"
+                        },
+                        "lastUpdated": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Last updated (raw)",
+                          "example": "4-Sep-2026 4:16 pm (ACT Local Time)"
+                        },
+                        "publishDateIso": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Publish date",
+                          "description": "YYYY-MM-DD."
+                        },
+                        "lastUpdatedIso": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Last updated",
+                          "description": "UTC ISO-8601 instant converted from Canberra local time - the register's only time-of-day field and the delta engine's change key."
+                        },
+                        "valueAudNumber": {
+                          "type": [
+                            "number",
+                            "null"
+                          ],
+                          "title": "Value AUD",
+                          "description": "Numeric value for sorting, summing and thresholds."
+                        },
+                        "valueBand": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Value band",
+                          "description": "<10k, 10k-100k, 100k-1M, 1M-10M, >=10M."
+                        },
+                        "grantStartDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Grant start (raw)"
+                        },
+                        "grantEndDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Grant end (raw)"
+                        },
+                        "grantStartDateIso": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Grant start"
+                        },
+                        "grantEndDateIso": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Grant end"
+                        },
+                        "grantTermDays": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "title": "Grant term (days)"
+                        },
+                        "daysUntilGrantEnd": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "title": "Days until grant end",
+                          "description": "Negative once the term has ended - a renewal/re-tender signal."
+                        },
+                        "isCurrent": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "Is current",
+                          "description": "true while today falls inside the grant term."
+                        },
+                        "financialYear": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Financial year (published)",
+                          "example": "2026-27"
+                        },
+                        "grantStartFinancialYear": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Financial year (start)"
+                        },
+                        "recipientEntityType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Recipient entity type",
+                          "description": "company, local_government, university, aboriginal_corporation, incorporated_association, trust, government, multiple or other - derived from the legal name."
+                        },
+                        "detailFetched": {
+                          "type": "boolean",
+                          "title": "Detail fetched",
+                          "description": "false when fetchDetail was off or the award page could not be retrieved (see detailError)."
+                        },
+                        "detailError": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Detail error"
+                        },
+                        "agencyCurrentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Agency (current name)",
+                          "description": "Agency name on the award page - reflects machinery-of-government renames."
+                        },
+                        "approvalDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Approval date (raw)"
+                        },
+                        "approvalDateIso": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Approval date"
+                        },
+                        "variationPublishDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Variation publish date (raw)"
+                        },
+                        "variationPublishDateIso": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Variation publish date"
+                        },
+                        "variationDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Variation date (raw)"
+                        },
+                        "variationDateIso": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Variation date"
+                        },
+                        "oneOffAdHoc": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "One-off / ad hoc (raw)"
+                        },
+                        "isOneOffAdHoc": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "Is one-off / ad hoc"
+                        },
+                        "aggregateGrantAward": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Aggregate grant award (raw)"
+                        },
+                        "isAggregate": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "Is aggregate"
+                        },
+                        "aggregateReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Aggregate reason"
+                        },
+                        "numberOfAwardsAggregated": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "title": "Number of awards aggregated"
+                        },
+                        "gstInclusive": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "GST inclusive",
+                          "description": "true when the award page marks the value 'GST inclusive where applicable'."
+                        },
+                        "pbsProgramName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "PBS program name"
+                        },
+                        "grantProgram": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Grant program"
+                        },
+                        "grantActivity": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Grant activity"
+                        },
+                        "purpose": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Purpose"
+                        },
+                        "goId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "GO ID",
+                          "description": "The originating Grant Opportunity (funding round), when linked."
+                        },
+                        "goUuid": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "GO UUID"
+                        },
+                        "goTitle": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "GO title"
+                        },
+                        "goUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "GO URL"
+                        },
+                        "internalReferenceId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Internal reference ID"
+                        },
+                        "selectionProcess": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Selection process",
+                          "example": "Demand Driven"
+                        },
+                        "confidentialityContract": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Confidentiality - contract (raw)"
+                        },
+                        "isContractConfidential": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "Contract confidential"
+                        },
+                        "confidentialityReasonContract": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Confidentiality reason - contract"
+                        },
+                        "confidentialityOutputs": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Confidentiality - outputs (raw)"
+                        },
+                        "isOutputsConfidential": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "Outputs confidential"
+                        },
+                        "confidentialityReasonOutputs": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Confidentiality reason - outputs"
+                        },
+                        "recipientAbn": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Recipient ABN (raw)",
+                          "example": "46 101 325 642"
+                        },
+                        "recipientAbnNormalized": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Recipient ABN",
+                          "description": "11 digits, no spaces - the join key for ABR, ASIC, CRM and credit data."
+                        },
+                        "recipientAbnValid": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ],
+                          "title": "ABN checksum valid"
+                        },
+                        "abrLookupUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "ABR lookup URL"
+                        },
+                        "recipientSuburb": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Recipient suburb"
+                        },
+                        "recipientTownCity": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Recipient town/city"
+                        },
+                        "recipientPostcode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Recipient postcode"
+                        },
+                        "recipientState": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Recipient state"
+                        },
+                        "recipientCountry": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Recipient country"
+                        },
+                        "deliverySuburb": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Delivery suburb"
+                        },
+                        "deliveryTownCity": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Delivery town/city"
+                        },
+                        "deliveryPostcode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Delivery postcode",
+                          "description": "Where the grant is delivered - can differ from the recipient's address (e.g. 'Multiple')."
+                        },
+                        "deliveryState": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Delivery state",
+                          "example": "ACT, VIC"
+                        },
+                        "deliveryCountry": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Delivery country"
+                        },
+                        "agencyContactName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Agency contact name"
+                        },
+                        "agencyContactPhone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Agency contact phone"
+                        },
+                        "agencyContactEmail": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "title": "Agency contact email"
+                        }
+                      },
+                      "required": [
+                        "record_id",
+                        "event_type",
+                        "scraped_at",
+                        "is_new",
+                        "source_url",
+                        "gaId"
+                      ]
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "description": "Newest activity first: who got what, from which agency, for how much.",
+                        "transformation": {
+                          "fields": [
+                            "event_type",
+                            "gaId",
+                            "recipientName",
+                            "agency",
+                            "valueAudNumber",
+                            "category",
+                            "publishDateIso",
+                            "lastUpdatedIso",
+                            "grantProgram",
+                            "source_url"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "event_type": {
+                              "label": "Event",
+                              "format": "text"
+                            },
+                            "gaId": {
+                              "label": "GA ID",
+                              "format": "text"
+                            },
+                            "recipientName": {
+                              "label": "Recipient",
+                              "format": "text"
+                            },
+                            "agency": {
+                              "label": "Agency",
+                              "format": "text"
+                            },
+                            "valueAudNumber": {
+                              "label": "Value (AUD)",
+                              "format": "number"
+                            },
+                            "category": {
+                              "label": "Category",
+                              "format": "text"
+                            },
+                            "publishDateIso": {
+                              "label": "Published",
+                              "format": "date"
+                            },
+                            "lastUpdatedIso": {
+                              "label": "Last updated",
+                              "format": "date"
+                            },
+                            "grantProgram": {
+                              "label": "Program",
+                              "format": "text"
+                            },
+                            "source_url": {
+                              "label": "Record",
+                              "format": "link"
+                            }
+                          }
+                        }
+                      },
+                      "recipients": {
+                        "title": "Recipient directory",
+                        "description": "Entity-resolution view: ABN-keyed recipients with location and the ABR lookup link.",
+                        "transformation": {
+                          "fields": [
+                            "recipientName",
+                            "recipientEntityType",
+                            "recipientAbnNormalized",
+                            "recipientAbnValid",
+                            "abrLookupUrl",
+                            "recipientState",
+                            "recipientPostcode",
+                            "deliveryState",
+                            "deliveryPostcode",
+                            "valueAudNumber",
+                            "agency",
+                            "gaId"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "recipientName": {
+                              "label": "Recipient",
+                              "format": "text"
+                            },
+                            "recipientEntityType": {
+                              "label": "Type",
+                              "format": "text"
+                            },
+                            "recipientAbnNormalized": {
+                              "label": "ABN",
+                              "format": "text"
+                            },
+                            "recipientAbnValid": {
+                              "label": "ABN valid",
+                              "format": "boolean"
+                            },
+                            "abrLookupUrl": {
+                              "label": "ABR",
+                              "format": "link"
+                            },
+                            "recipientState": {
+                              "label": "State",
+                              "format": "text"
+                            },
+                            "recipientPostcode": {
+                              "label": "Postcode",
+                              "format": "text"
+                            },
+                            "deliveryState": {
+                              "label": "Delivery state",
+                              "format": "text"
+                            },
+                            "deliveryPostcode": {
+                              "label": "Delivery postcode",
+                              "format": "text"
+                            },
+                            "valueAudNumber": {
+                              "label": "Value (AUD)",
+                              "format": "number"
+                            },
+                            "agency": {
+                              "label": "Agency",
+                              "format": "text"
+                            },
+                            "gaId": {
+                              "label": "GA ID",
+                              "format": "text"
+                            }
+                          }
+                        }
+                      },
+                      "programs": {
+                        "title": "Programs & opportunities",
+                        "description": "Ties each award back to its funding round, program and selection process.",
+                        "transformation": {
+                          "fields": [
+                            "gaId",
+                            "grantProgram",
+                            "goId",
+                            "goTitle",
+                            "goUrl",
+                            "pbsProgramName",
+                            "selectionProcess",
+                            "isOneOffAdHoc",
+                            "isAggregate",
+                            "numberOfAwardsAggregated",
+                            "isContractConfidential",
+                            "valueAudNumber",
+                            "agency"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "gaId": {
+                              "label": "GA ID",
+                              "format": "text"
+                            },
+                            "grantProgram": {
+                              "label": "Program",
+                              "format": "text"
+                            },
+                            "goId": {
+                              "label": "GO ID",
+                              "format": "text"
+                            },
+                            "goTitle": {
+                              "label": "Opportunity",
+                              "format": "text"
+                            },
+                            "goUrl": {
+                              "label": "GO link",
+                              "format": "link"
+                            },
+                            "pbsProgramName": {
+                              "label": "PBS program",
+                              "format": "text"
+                            },
+                            "selectionProcess": {
+                              "label": "Selection",
+                              "format": "text"
+                            },
+                            "isOneOffAdHoc": {
+                              "label": "Ad hoc",
+                              "format": "boolean"
+                            },
+                            "isAggregate": {
+                              "label": "Aggregate",
+                              "format": "boolean"
+                            },
+                            "numberOfAwardsAggregated": {
+                              "label": "# aggregated",
+                              "format": "number"
+                            },
+                            "isContractConfidential": {
+                              "label": "Confidential",
+                              "format": "boolean"
+                            },
+                            "valueAudNumber": {
+                              "label": "Value (AUD)",
+                              "format": "number"
+                            },
+                            "agency": {
+                              "label": "Agency",
+                              "format": "text"
+                            }
+                          }
+                        }
+                      },
+                      "terms": {
+                        "title": "Grant terms & expiry",
+                        "description": "Renewal pipeline: start, end, days remaining and financial year.",
+                        "transformation": {
+                          "fields": [
+                            "gaId",
+                            "recipientName",
+                            "grantStartDateIso",
+                            "grantEndDateIso",
+                            "grantTermDays",
+                            "daysUntilGrantEnd",
+                            "isCurrent",
+                            "financialYear",
+                            "valueAudNumber",
+                            "source_url"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "gaId": {
+                              "label": "GA ID",
+                              "format": "text"
+                            },
+                            "recipientName": {
+                              "label": "Recipient",
+                              "format": "text"
+                            },
+                            "grantStartDateIso": {
+                              "label": "Start",
+                              "format": "date"
+                            },
+                            "grantEndDateIso": {
+                              "label": "End",
+                              "format": "date"
+                            },
+                            "grantTermDays": {
+                              "label": "Term (days)",
+                              "format": "number"
+                            },
+                            "daysUntilGrantEnd": {
+                              "label": "Days left",
+                              "format": "number"
+                            },
+                            "isCurrent": {
+                              "label": "Current",
+                              "format": "boolean"
+                            },
+                            "financialYear": {
+                              "label": "FY",
+                              "format": "text"
+                            },
+                            "valueAudNumber": {
+                              "label": "Value (AUD)",
+                              "format": "number"
+                            },
+                            "source_url": {
+                              "label": "Record",
+                              "format": "link"
+                            }
+                          }
+                        }
+                      },
+                      "variations": {
+                        "title": "Variations & updates",
+                        "description": "Amendments to earlier awards (value or term changes) and updates to known records.",
+                        "transformation": {
+                          "fields": [
+                            "event_type",
+                            "gaId",
+                            "baseGaId",
+                            "variationNumber",
+                            "variesUrl",
+                            "variationDateIso",
+                            "variationPublishDateIso",
+                            "lastUpdatedIso",
+                            "valueAudNumber",
+                            "recipientName",
+                            "agency",
+                            "source_url"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "properties": {
+                            "event_type": {
+                              "label": "Event",
+                              "format": "text"
+                            },
+                            "gaId": {
+                              "label": "GA ID",
+                              "format": "text"
+                            },
+                            "baseGaId": {
+                              "label": "Base award",
+                              "format": "text"
+                            },
+                            "variationNumber": {
+                              "label": "Variation #",
+                              "format": "number"
+                            },
+                            "variesUrl": {
+                              "label": "Base link",
+                              "format": "link"
+                            },
+                            "variationDateIso": {
+                              "label": "Variation date",
+                              "format": "date"
+                            },
+                            "variationPublishDateIso": {
+                              "label": "Variation published",
+                              "format": "date"
+                            },
+                            "lastUpdatedIso": {
+                              "label": "Last updated",
+                              "format": "date"
+                            },
+                            "valueAudNumber": {
+                              "label": "Value (AUD)",
+                              "format": "number"
+                            },
+                            "recipientName": {
+                              "label": "Recipient",
+                              "format": "text"
+                            },
+                            "agency": {
+                              "label": "Agency",
+                              "format": "text"
+                            },
+                            "source_url": {
+                              "label": "Record",
+                              "format": "link"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

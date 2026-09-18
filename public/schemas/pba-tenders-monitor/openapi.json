@@ -1,0 +1,419 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Delta Registry — PBAC Buenos Aires Province - Tender Delta JSON Feed",
+    "description": "PBAC is the official public tender portal for Buenos Aires Province, Argentina, not the city of Buenos Aires (CABA) or national procurement. Extracts upcoming openings, last-30-day tenders, and awarded processes, with delta mode flagging new listings, status changes, amendments, and closures.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.apify.com/v2"
+    }
+  ],
+  "paths": {
+    "/acts/yWvRQyWSyGVLJPtQ7/runs": {
+      "post": {
+        "operationId": "startPbaTendersMonitorRun",
+        "summary": "Start an async run of: PBAC is the official public tender portal for Buenos Aires Province, Argentina, not the city of Buenos Aires (CABA) or national procurement. Extracts upcoming openings, last-30-day tenders, and awarded processes, with delta mode flagging new listings, status changes, amendments, and closures.",
+        "x-async-pattern-reason": "No production run history exists for this actor — defaulting to the async run+poll pattern as a precaution, not a measurement. Re-run this generator once real telemetry exists to potentially switch it to sync.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "views": {
+                    "type": "array",
+                    "description": "Which PBAC grids to extract. Defaults to all three.",
+                    "default": [
+                      "apertura_proxima",
+                      "ultimos_30_dias",
+                      "adjudicados"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "apertura_proxima",
+                        "ultimos_30_dias",
+                        "adjudicados"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "fetchFullDetail": {
+                    "type": "boolean",
+                    "description": "When enabled, simulates the postback for each process. Known limitation: this currently returns only a short status label, not the full Pliego document text - that content lives in a nested panel not yet mapped. Leave off until this is resolved; it adds cost with limited extra value today.",
+                    "default": false
+                  },
+                  "maxItems": {
+                    "type": "integer",
+                    "description": "Hard cap on the number of tender processes returned this run, across all selected views.",
+                    "default": 200,
+                    "minimum": 1
+                  },
+                  "onlyNew": {
+                    "type": "boolean",
+                    "description": "For recurring/scheduled runs: return only tenders that are new, changed vistaOrigen/estado, amended or closed since a prior run of this actor (tracked in a named key-value store scoped to this actor). CLOSED (a tender no longer in any of the 3 grids) is only ever computed when 'Views to extract' covers all 3 default views - a narrower selection makes this run's fetch a subset of the site, so CLOSED is skipped (and logged) in that case.",
+                    "default": false
+                  },
+                  "eventTypes": {
+                    "type": "array",
+                    "description": "Which kinds of change to deliver when 'Only new records' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = vistaOrigen or estado changed - e.g. a tender moving from upcoming to awarded. UPDATED = same vistaOrigen/estado, a field changed. CLOSED = no longer listed in any of the 3 grids (only computed on an unfiltered 'Views to extract').",
+                    "default": [
+                      "NEW_LISTING",
+                      "STATUS_CHANGE",
+                      "UPDATED",
+                      "CLOSED"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "NEW_LISTING",
+                        "STATUS_CHANGE",
+                        "UPDATED",
+                        "CLOSED"
+                      ]
+                    }
+                  },
+                  "dateRange": {
+                    "type": "string",
+                    "description": "Restricts results to tenders whose fechaApertura falls within this window ending now. Independent of onlyNew. Note: fechaApertura is WHEN BIDS OPEN, not when the tender was published - for the 'Upcoming openings' view specifically that date is routinely in the future, so this filter will not match those rows (see AGENTS.md/README).",
+                    "enum": [
+                      "24h",
+                      "7d",
+                      "30d"
+                    ]
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run started. Poll GET /actor-runs/{runId} with the returned run id until status is SUCCEEDED, then fetch its dataset items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/actor-runs/{runId}": {
+      "get": {
+        "operationId": "getPbaTendersMonitorRunStatus",
+        "summary": "Poll the status of a previously started run.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current run status. When status is SUCCEEDED, fetch the dataset via GET /datasets/{datasetId}/items, passing this response's defaultDatasetId field as {datasetId}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "defaultDatasetId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    },
+    "/datasets/{datasetId}/items": {
+      "get": {
+        "operationId": "getPbaTendersMonitorDatasetItems",
+        "summary": "Fetch the dataset items produced by a completed run.",
+        "parameters": [
+          {
+            "name": "datasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of normalized records from the actor run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "actorSpecification": 1,
+                    "title": "Dataset Schema",
+                    "fields": {
+                      "type": "object",
+                      "properties": {
+                        "numeroProceso": {
+                          "title": "Numero de proceso",
+                          "type": "string",
+                          "description": "PBAC process number, e.g. 2026-338-99-265"
+                        },
+                        "descripcion": {
+                          "title": "Descripcion",
+                          "type": "string",
+                          "description": "Short description of the tender"
+                        },
+                        "tipoProcedimiento": {
+                          "title": "Tipo de procedimiento",
+                          "type": "string",
+                          "description": "Licitacion Publica, Licitacion Privada, or Procedimiento Abreviado"
+                        },
+                        "fechaApertura": {
+                          "title": "Fecha de apertura",
+                          "type": "string",
+                          "description": "Opening date and time as shown by PBAC"
+                        },
+                        "estado": {
+                          "title": "Estado",
+                          "type": "string",
+                          "description": "Publicado, En Apertura, En Evaluacion, Disponible Para Adjudicar, etc."
+                        },
+                        "organismo": {
+                          "title": "Organismo",
+                          "type": "string",
+                          "description": "Contracting unit/agency"
+                        },
+                        "vistaOrigen": {
+                          "title": "Vista origen",
+                          "type": "string",
+                          "description": "Which PBAC grid this row came from: apertura_proxima, ultimos_30_dias or adjudicados"
+                        },
+                        "detalleCompleto": {
+                          "title": "Detalle completo",
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "description": "Full document preview text, only populated when fetchFullDetail is enabled"
+                        },
+                        "scrapedAt": {
+                          "title": "Scraped at",
+                          "type": "string",
+                          "description": "ISO timestamp of extraction"
+                        },
+                        "record_id": {
+                          "title": "Record ID",
+                          "type": "string",
+                          "description": "Same value as numeroProceso"
+                        },
+                        "event_type": {
+                          "title": "Event Type",
+                          "type": "string",
+                          "description": "NEW_LISTING (never seen before), STATUS_CHANGE (vistaOrigen or estado changed), UPDATED (a field changed), UNCHANGED (only when Only new records is off) or CLOSED (no longer in any of the 3 grids)."
+                        },
+                        "previousVistaOrigen": {
+                          "title": "Previous Vista Origen",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Set only when event_type=STATUS_CHANGE and vistaOrigen changed."
+                        },
+                        "previousEstado": {
+                          "title": "Previous Estado",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Set only when event_type=STATUS_CHANGE and estado changed."
+                        },
+                        "is_new": {
+                          "title": "Is New",
+                          "type": "boolean",
+                          "description": "True if this id was not in the persisted seen-set when this run started."
+                        },
+                        "source_url": {
+                          "title": "Source URL",
+                          "type": "string",
+                          "description": "The PBAC homepage - this portal has no per-tender deep link."
+                        },
+                        "contentHash": {
+                          "title": "Content Hash",
+                          "type": "string",
+                          "description": "sha1 fingerprint used to detect UPDATED between runs."
+                        }
+                      }
+                    },
+                    "views": {
+                      "overview": {
+                        "title": "Overview",
+                        "transformation": {
+                          "fields": [
+                            "numeroProceso",
+                            "descripcion",
+                            "tipoProcedimiento",
+                            "fechaApertura",
+                            "estado",
+                            "organismo"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "Numero",
+                              "format": "text",
+                              "field": "numeroProceso"
+                            },
+                            {
+                              "label": "Descripcion",
+                              "format": "text",
+                              "field": "descripcion"
+                            },
+                            {
+                              "label": "Tipo",
+                              "format": "text",
+                              "field": "tipoProcedimiento"
+                            },
+                            {
+                              "label": "Apertura",
+                              "format": "text",
+                              "field": "fechaApertura"
+                            },
+                            {
+                              "label": "Estado",
+                              "format": "text",
+                              "field": "estado"
+                            },
+                            {
+                              "label": "Organismo",
+                              "format": "text",
+                              "field": "organismo"
+                            }
+                          ]
+                        }
+                      },
+                      "changes": {
+                        "title": "Status changes & closures",
+                        "transformation": {
+                          "fields": [
+                            "record_id",
+                            "event_type",
+                            "previousVistaOrigen",
+                            "previousEstado",
+                            "vistaOrigen",
+                            "estado",
+                            "organismo",
+                            "scrapedAt"
+                          ]
+                        },
+                        "display": {
+                          "component": "table",
+                          "columns": [
+                            {
+                              "label": "Numero",
+                              "format": "text",
+                              "field": "record_id"
+                            },
+                            {
+                              "label": "Evento",
+                              "format": "text",
+                              "field": "event_type"
+                            },
+                            {
+                              "label": "Vista anterior",
+                              "format": "text",
+                              "field": "previousVistaOrigen"
+                            },
+                            {
+                              "label": "Estado anterior",
+                              "format": "text",
+                              "field": "previousEstado"
+                            },
+                            {
+                              "label": "Vista actual",
+                              "format": "text",
+                              "field": "vistaOrigen"
+                            },
+                            {
+                              "label": "Estado actual",
+                              "format": "text",
+                              "field": "estado"
+                            },
+                            {
+                              "label": "Organismo",
+                              "format": "text",
+                              "field": "organismo"
+                            },
+                            {
+                              "label": "Detectado",
+                              "format": "date",
+                              "field": "scrapedAt"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-openai-isConsequential": false
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApifyBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApifyBearerAuth": []
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "name": "pba-tenders-monitor",
+  "description": "PBAC is the official public tender portal for Buenos Aires Province, Argentina, not the city of Buenos Aires (CABA) or national procurement. Extracts upcoming openings, last-30-day tenders, and awarded processes, with delta mode flagging new listings, status changes, amendments, and closures.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "views": {
+        "type": "array",
+        "description": "Which PBAC grids to extract. Defaults to all three.",
+        "default": [
+          "apertura_proxima",
+          "ultimos_30_dias",
+          "adjudicados"
+        ],
+        "items": {
+          "type": "string",
+          "enum": [
+            "apertura_proxima",
+            "ultimos_30_dias",
+            "adjudicados"
+          ]
+        },
+        "minItems": 1
+      },
+      "fetchFullDetail": {
+        "type": "boolean",
+        "description": "When enabled, simulates the postback for each process. Known limitation: this currently returns only a short status label, not the full Pliego document text - that content lives in a nested panel not yet mapped. Leave off until this is resolved; it adds cost with limited extra value today.",
+        "default": false
+      },
+      "maxItems": {
+        "type": "integer",
+        "description": "Hard cap on the number of tender processes returned this run, across all selected views.",
+        "default": 200,
+        "minimum": 1
+      },
+      "onlyNew": {
+        "type": "boolean",
+        "description": "For recurring/scheduled runs: return only tenders that are new, changed vistaOrigen/estado, amended or closed since a prior run of this actor (tracked in a named key-value store scoped to this actor). CLOSED (a tender no longer in any of the 3 grids) is only ever computed when 'Views to extract' covers all 3 default views - a narrower selection makes this run's fetch a subset of the site, so CLOSED is skipped (and logged) in that case.",
+        "default": false
+      },
+      "eventTypes": {
+        "type": "array",
+        "description": "Which kinds of change to deliver when 'Only new records' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = vistaOrigen or estado changed - e.g. a tender moving from upcoming to awarded. UPDATED = same vistaOrigen/estado, a field changed. CLOSED = no longer listed in any of the 3 grids (only computed on an unfiltered 'Views to extract').",
+        "default": [
+          "NEW_LISTING",
+          "STATUS_CHANGE",
+          "UPDATED",
+          "CLOSED"
+        ],
+        "items": {
+          "type": "string",
+          "enum": [
+            "NEW_LISTING",
+            "STATUS_CHANGE",
+            "UPDATED",
+            "CLOSED"
+          ]
+        }
+      },
+      "dateRange": {
+        "type": "string",
+        "description": "Restricts results to tenders whose fechaApertura falls within this window ending now. Independent of onlyNew. Note: fechaApertura is WHEN BIDS OPEN, not when the tender was published - for the 'Upcoming openings' view specifically that date is routinely in the future, so this filter will not match those rows (see AGENTS.md/README).",
+        "enum": [
+          "24h",
+          "7d",
+          "30d"
+        ]
+      }
+    },
+    "required": []
+  }
+}

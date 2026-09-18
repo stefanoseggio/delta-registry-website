@@ -1,0 +1,73 @@
+{
+  "type": "function",
+  "name": "salta-compras-monitor",
+  "description": "Extracts every currently open tender and contract award (licitaciones, adjudicaciones, contrataciones) from Salta Province, Argentina's official procurement portal, with organism, expediente, opening date/time and document links per publication. Delta mode flags new, amended and closed processes.",
+  "strict": true,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "fetchDetail": {
+        "type": [
+          "boolean",
+          "null"
+        ],
+        "description": "When enabled (default), fetches each publication's detail page for the full field set (organismo gestor, costo pliego, lugar de entrega, when present) plus attached document links. Disable for a faster, listing-only run. Default true if omitted."
+      },
+      "maxItems": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "description": "Hard cap on the number of publications returned this run. The portal serves ~250 currently-open (vigentes) publications at a time, 5 per page. Default 100 if omitted.",
+        "minimum": 1
+      },
+      "onlyNew": {
+        "type": [
+          "boolean",
+          "null"
+        ],
+        "description": "Delta mode for daily/recurring monitoring: returns only publications that are new, changed (a fingerprinted amendment - a new monto, document, date...) or closed since a previous run. Seen ids are persisted across runs in a named key-value store unique to this actor (\"salta-compras-monitor-delta-state\"), not the run's own default store (which is isolated per run and would not survive between scheduled runs). Every record still carries is_new, so a normal (onlyNew=false) run also tells you which of its results are new. Pagination is NOT stopped early once already-seen records are reached: this actor's listing is sorted by Fecha/Hora Apertura (the bid-opening deadline), not by when a publication was created, so a genuinely new publication can appear on any page - onlyNew filters after a full fetch up to maxItems instead of short-circuiting it. See AGENTS.md for the live evidence behind this. Default false if omitted."
+      },
+      "eventTypes": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "Which kinds of change to deliver when 'Only new' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. UPDATED = seen before, a field changed (fingerprinted). CLOSED = a previously-seen publication is absent from a complete walk this run - no longer vigente. CLOSED detection only runs when maxItems does not truncate the walk (a partial walk cannot prove absence) - see AGENTS.md. Default [\"NEW_LISTING\",\"UPDATED\",\"CLOSED\"] if omitted.",
+        "items": {
+          "type": "string",
+          "enum": [
+            "NEW_LISTING",
+            "UPDATED",
+            "CLOSED"
+          ],
+          "enumTitles": [
+            "NEW_LISTING - never seen before",
+            "UPDATED - a field changed",
+            "CLOSED - no longer vigente"
+          ]
+        }
+      },
+      "dateRange": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "Filters results to publications whose own Fecha/Hora Apertura (bid-opening deadline - the only date field this source exposes anywhere, listing or detail; there is no separate publication date) falls within the given window. For the \"vigentes\" (currently open) publications this actor covers, that date is almost always in the FUTURE relative to when this actor runs, so this is an upcoming-deadline filter (\"opens within the next 24h/7d/30d\"), not a \"published in the last N\" filter. Independent of onlyNew.",
+        "enum": [
+          "24h",
+          "7d",
+          "30d"
+        ]
+      }
+    },
+    "required": [
+      "fetchDetail",
+      "maxItems",
+      "onlyNew",
+      "eventTypes",
+      "dateRange"
+    ],
+    "additionalProperties": false
+  }
+}
