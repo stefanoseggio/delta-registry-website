@@ -181,3 +181,161 @@ delivered, outside this commit's scope.
   action possible
 - Glama.ai: not viable as a Delta-Registry-owned listing (requires an owned source repo; see
   `MARKET_DOMINANCE_AND_REVENUE_POTENTIATION_ROADMAP.md`'s Correction #2 for the full reasoning)
+
+---
+
+## Official Registry Audit — appended 2026-09-18
+
+A follow-up sprint specifically to prepare `public/mcp-server.json` for submission to
+`registry.modelcontextprotocol.io`. One of this sprint's own starting assumptions didn't survive
+contact with the real schema, and the process caught one genuine, previously-unnoticed defect in
+the manifest — both are documented below rather than smoothed over, consistent with this session's
+standing practice.
+
+### Correction made before auditing anything
+
+The sprint's own brief asked to verify "the required query parameter configuration
+(`?token={token}`)" against the live Apify gateway spec. **This isn't accurate, and building the
+audit around it would have meant fixing something that isn't broken while missing what actually
+was.** `?token=` was Smithery's own UI workaround, adopted in that platform's own connection-
+parameter flow specifically because Smithery's UI rejects `Authorization` as a custom header name
+("Header 'Authorization' is reserved" — confirmed directly, in that same session, from Smithery's
+own validation error). That is a Smithery-specific implementation constraint, not a rule of the
+underlying MCP `server.json` format. Checked directly against the real, current
+`server.schema.json` (fetched live from `static.modelcontextprotocol.io`, draft-07): the schema's
+`StreamableHttpTransport` definition supports an optional `headers` array (of `KeyValueInput`
+objects: `name` required, `description`/`isRequired`/`isSecret`/`default`/etc. all optional) with
+**no restriction on header names whatsoever** — no mention of "Authorization," "reserved," or
+"forbidden" anywhere in the 574-line schema. `public/mcp-server.json`'s existing
+`headers: [{name: "Authorization", ...}]` declaration is fully schema-valid and is the more
+conventional, broadly-client-compatible mechanism (Claude Desktop's `mcp-remote` bridge, Cursor,
+and Windsurf were all independently confirmed earlier this session to support per-server custom
+headers in their MCP client configs) — it was kept as-is rather than "corrected" to match a
+constraint that only applies to a different platform's UI.
+
+### Block 1 — Manifest compliance & schema audit
+
+Fetched the real, current schema directly: `https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json`
+(HTTP 200, draft-07, `$id` matches the `$schema` value already used in `public/mcp-server.json`).
+Validated with Python's `jsonschema` library (`Draft7Validator`, not a hand-rolled check) against
+the real, live file.
+
+**First pass found a real, genuine defect**: the top-level `description` field failed schema
+validation — `"...213 characters..." is too long`. The schema caps `description` (and separately
+`title`) at `maxLength: 100`, with explicit guidance to "focus on capabilities, not implementation
+details." The original text (`"28 pay-per-event regulatory, sanctions, procurement, and
+corporate-registry monitoring tools exposed via Apify's hosted MCP gateway. Delta-classified
+output so a repeat call never re-bills for an unchanged record."`) was 213 characters and named
+implementation details ("Apify's hosted MCP gateway") the schema's own guidance says to avoid.
+
+**Fixed in the generator source**, not just the output file — `lib/aio-generator/generate-aio-files.ts`'s
+`buildMcpServerJson()` now computes `description` as a capability-focused, 97-character string
+(`"28 pay-per-event tools for regulatory, sanctions, procurement, and corporate-registry
+monitoring."`) and asserts both `title` and `description` are ≤100 chars at generation time,
+throwing a build-time error rather than silently emitting an invalid file if either regresses past
+the limit in a future edit. Regenerated all 3 files from the fixed source; `npm run typecheck`,
+`npm run lint`, and `npm run build` all re-confirmed clean afterward.
+
+**Re-validated after the fix**: `Draft7Validator` — **0 errors**, fully schema-valid.
+
+URI/pattern checks: `remotes[0].url` matches the schema's required `^https?://[^\s]+$` pattern;
+`name` (`io.github.stefanoseggio/delta-registry`, 38 chars) is well under the 200-char cap and
+correctly contains exactly one `/` separating namespace from server name, matching the schema's
+own stated requirement.
+
+### Block 2 — Triple-pass adversarial verification
+
+**Pass 1 (Structural Validation)** — covered above: real Draft-07 validation via `jsonschema`,
+0 errors after the fix. Additionally ran the *official* tool's own validator (see Submission
+Protocol below) as a second, independent structural check.
+
+**Pass 2 (Protocol & Security Audit)** — grepped `public/mcp-server.json` and
+`lib/aio-generator/generate-aio-files.ts` for anything token/credential-shaped
+(`apify_api_...`, `Bearer <real-looking string>`, a hardcoded `token=`/`key=` value): zero matches
+in either file. Separately confirmed programmatically that the one `isSecret: true`-marked header
+(`Authorization`) carries no literal `value` property alongside it — per the schema's own
+semantics, a `value` present on an input means "not configurable by end users," so its absence is
+what makes this a real, safe secret declaration rather than an accidental leak. No credential of
+any kind is embedded in the manifest.
+
+**Pass 3 (Edge-Case & Drift Analysis)** — re-diffed the manifest's 28 `tools=` slugs against
+`lib/schema-generator/actor-registry.ts` programmatically: 0 missing, 0 extra, 0 duplicates.
+Re-confirmed the transport is `streamable-http` with no `/sse` substring anywhere in the URL
+(SSE retired by Apify 2026-04-01, already covered in this report's main body). Re-confirmed live
+that the deployed dev-server endpoint (`http://localhost:3000/mcp-server.json`) serves the exact,
+regenerated, now-valid content.
+
+### Block 3 — Submission protocol & post-registration verification artifacts
+
+**The real official CLI, not the deceptively-named npm package.** `npm search mcp-publisher`
+returns a same-named but entirely unrelated package (a Russian-language "browser automation for
+auto-publishing content" tool built on Playwright, v0.4.2, published by an unrelated maintainer) —
+installing it would have meant running an unverified third-party automation tool under a
+misleading name. The real, official CLI is distributed only as a signed GitHub Release binary from
+`modelcontextprotocol/registry` (v1.8.1). Downloaded `mcp-publisher_windows_amd64.tar.gz` via the
+authenticated `gh` CLI and verified its SHA-256 against the release's own published checksums file
+before extracting or executing it:
+
+```
+399ad0d6e00a50812b563a71d8bfbff5160c085e6b13aac6ec083d98d5ff7c45  mcp-publisher_windows_amd64.tar.gz
+```
+— computed hash matched exactly.
+
+**Ran the official tool's own `validate` command** (no authentication required) against the real,
+regenerated `public/mcp-server.json`, live against the production registry endpoint:
+
+```
+$ mcp-publisher validate ./server.json
+Validating against https://registry.modelcontextprotocol.io...
+✅ server.json is valid
+```
+
+This is a stronger confirmation than the local `jsonschema` pass alone — it's the actual tool the
+registry uses, checked against the live service, not a local approximation of the schema.
+
+**Confirmed exactly where the real credential boundary is**, rather than guessing: `mcp-publisher
+publish` was run once without logging in, and failed exactly as documented —
+`Error: not authenticated, run 'mcp-publisher login <method>' first` (exit 1). `login --help`
+confirms the `github` method opens **interactive GitHub authentication** — a real OAuth consent
+flow tied to the account owner's own GitHub identity. Since the manifest's `name` field
+(`io.github.stefanoseggio/delta-registry`) is namespaced under the `stefanoseggio` GitHub account
+specifically, `github` is the correct (and only applicable) login method here — the CLI's
+alternative `dns`/`http` methods authenticate a domain-namespaced name (`com.example/...`), not
+a GitHub one. This is the same class of action declined earlier this session for Smithery, for the
+same reason: granting OAuth access to a third-party tool is the account owner's decision, not
+something completed on their behalf.
+
+**SHA-256 checksum of the final, submitted-ready manifest** (for exact version tracking — this is
+the file that passed both validation passes above):
+
+```
+45ada70e42204d4cae353956d9410ae51c6a46a051ed7f563e6c8a5bc3acc3c4  public/mcp-server.json
+```
+(3,323 bytes, as committed)
+
+**Exact remaining steps, for the account owner to run directly:**
+
+```bash
+# 1. Get the real, official CLI (NOT `npm install mcp-publisher` — that installs an unrelated package)
+gh release download v1.8.1 --repo modelcontextprotocol/registry --pattern "mcp-publisher_windows_amd64.tar.gz"
+gh release download v1.8.1 --repo modelcontextprotocol/registry --pattern "registry_1.8.1_checksums.txt"
+sha256sum -c <(grep mcp-publisher_windows_amd64.tar.gz registry_1.8.1_checksums.txt)  # confirm the hash above
+tar -xzf mcp-publisher_windows_amd64.tar.gz
+
+# 2. Authenticate as stefanoseggio (opens a real GitHub OAuth prompt in your browser)
+./mcp-publisher.exe login github
+
+# 3. Re-validate (optional — already confirmed valid in this audit) and publish
+./mcp-publisher.exe validate ./public/mcp-server.json
+./mcp-publisher.exe publish ./public/mcp-server.json
+
+# 4. Verify the live listing
+curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.stefanoseggio/delta-registry"
+```
+
+### Final status
+
+`public/mcp-server.json` is schema-valid (both by independent `jsonschema` validation and the
+official tool's own live validator), contains zero embedded credentials, has zero drift against
+the real 28-actor fleet, and is one `login github` + `publish` command away from a live Official
+Registry listing — a real, verified, precisely-bounded gap, not an open-ended one.

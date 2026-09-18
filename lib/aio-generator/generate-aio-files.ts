@@ -180,12 +180,22 @@ function buildLlmsFullTxt(): string {
 
 function buildMcpServerJson(): Record<string, unknown> {
   const toolsParam = ACTOR_REGISTRY.map((a) => `stefano_seggio/${a.slug}`).join(',');
+  const title = `Delta Registry — Regulatory & Compliance Monitoring (${ACTOR_COUNT} tools)`;
+  // The official registry's server.schema.json caps both `title` and `description` at 100 chars
+  // (verified live against static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json)
+  // — an earlier draft of this description was 213 chars and would have failed real submission.
+  // Asserted here, not just fixed once, so a future edit can't silently regress past the limit.
+  const description = `${ACTOR_COUNT} pay-per-event tools for regulatory, sanctions, procurement, and corporate-registry monitoring.`;
+  for (const [field, value] of [['title', title], ['description', description]] as const) {
+    if (value.length > 100) {
+      throw new Error(`mcp-server.json's "${field}" is ${value.length} chars — exceeds the official registry's 100-char limit.`);
+    }
+  }
   return {
     $schema: 'https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json',
     name: 'io.github.stefanoseggio/delta-registry',
-    title: `Delta Registry — Regulatory & Compliance Monitoring (${ACTOR_COUNT} tools)`,
-    description:
-      `${ACTOR_COUNT} pay-per-event regulatory, sanctions, procurement, and corporate-registry monitoring tools exposed via Apify's hosted MCP gateway. Delta-classified output so a repeat call never re-bills for an unchanged record.`,
+    title,
+    description,
     websiteUrl: SITE_URL,
     repository: { url: 'https://github.com/stefanoseggio/delta-registry-website', source: 'github' },
     version: '1.0.0',
