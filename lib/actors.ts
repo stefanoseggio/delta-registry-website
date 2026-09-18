@@ -517,9 +517,14 @@ export const ACTOR_COUNT = ACTORS.length
 export const DOMAINS = Array.from(new Set(ACTORS.map((a) => a.domain)))
 
 // Real GitHub repo count for github.com/stefanoseggio, independently re-verified via
-// `gh api users/stefanoseggio/repos` on 2026-09-16 — not derived from ACTORS.length, since
-// several repos (distribution/profile/GTM tooling) aren't actor wrappers at all.
-export const GITHUB_REPO_COUNT = 34
+// `gh repo list stefanoseggio --limit 200` on 2026-09-18 — not derived from ACTORS.length,
+// since several repos (distribution/profile/GTM lead-magnet stubs) aren't actor wrappers at
+// all. Excludes 3 repos confirmed unrelated to Delta Registry (personal projects with no
+// Delta Registry connection: a Minecraft server config, a Solana trading bot, a stat-arb
+// project) — all 3 also happen to be private, so this figure already matched "public repo
+// count" by coincidence, not by filtering on visibility. The prior value (34) was stale by 4
+// repos, most likely because it predated 7 new delta-registry-*-stub lead-magnet repos.
+export const GITHUB_REPO_COUNT = 38
 
 // Real values with a "pricing not independently re-verified for this figure" placeholder
 // (priceUsd: 0) are rendered on the site as "See live Store pricing →" rather than "$0.00" —
