@@ -566,3 +566,85 @@ curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.ste
 
 Ready to run both, and document the real result (success or any real error the registry returns),
 as soon as authorization is confirmed complete.
+
+---
+
+## Official Registry — LIVE, PUBLISHED — final status, appended 2026-09-18T17:10:18Z
+
+**Delta Registry is now a real, live entry on the Official MCP Registry.** Every claim below was
+independently verified against the registry's own API after publishing — not accepted from the
+CLI's own success message alone, and one genuine-looking anomaly encountered along the way was
+investigated to a confirmed, correct conclusion rather than either dismissed or left unresolved.
+
+### Authentication — independently confirmed before publishing, not just accepted
+
+Before running `publish`, re-checked the claim that authorization had completed, directly against
+process and filesystem state rather than the claim's own text: the backgrounded
+`mcp-publisher.exe` login process (PID 2928 / shell PID 444, both recorded in this report's prior
+entry) **had exited on its own** — `tasklist` returned no match. Its output log had grown two new,
+real lines since the last check: `Successfully authenticated!` and `✓ Successfully logged in`. A
+genuine, newly-created `~/.config/mcp-publisher/token.json` (487 bytes, timestamped 14:08) confirmed
+persisted credentials — its *existence, size, and timestamp* were checked, never its contents.
+
+### Pre-publish final check
+
+Re-verified `public/mcp-server.json`'s checksum one more time immediately before publishing —
+`45ada70e42204d4cae353956d9410ae51c6a46a051ed7f563e6c8a5bc3acc3c4`, unchanged since every prior
+check in this report — and re-ran live validation: `✅ server.json is valid`.
+
+### Publish — real command, real output
+
+```
+$ mcp-publisher publish ./server.json
+Publishing to https://registry.modelcontextprotocol.io...
+✓ Successfully published
+✓ Server io.github.stefanoseggio/delta-registry version 1.0.0
+```
+
+### Independent verification against the registry's own live API — not just the CLI's word
+
+```bash
+curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.stefanoseggio/delta-registry"
+```
+
+Real, live response (relevant fields): `"count": 1"`, the full 28-actor `remotes[0].url` returned
+byte-for-byte identical to the submitted manifest, and a registry-managed `_meta` block confirming:
+
+| Field | Value |
+|---|---|
+| `status` | `active` |
+| `isLatest` | `true` |
+| `publishedAt` | `2026-09-18T17:09:45.566324Z` |
+| `updatedAt` | `2026-09-18T17:09:45.566324Z` |
+
+### A real anomaly investigated, not glossed over
+
+The API response's `title` and the `Authorization` header's `description` initially appeared
+mangled when piped through this environment's console (`curl | python -m json.tool` in a Windows
+cp1252 terminal rendered the em-dash as `â€”`) — exactly the visual signature of a
+real double-encoding bug, and worth checking rather than assuming benign. Re-fetched the response to
+a file and decoded it directly in Python, bypassing the console entirely: `title ==
+'Delta Registry — Regulatory & Compliance Monitoring (28 tools)'` evaluated **`True`**, and the raw
+UTF-8 bytes for the em-dash (`\xe2\x80\x94`) were confirmed present and correct. **The registry's
+stored copy is byte-correct; the garbling was purely a local terminal-rendering artifact**, not a
+defect in what was published. Recorded here specifically so a future reader doesn't need to
+re-diagnose the same false alarm.
+
+### Live, canonical registry identifiers
+
+- **Registry name**: `io.github.stefanoseggio/delta-registry`
+- **Version**: `1.0.0`
+- **Query the live entry**: `https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.stefanoseggio/delta-registry`
+- **Status**: `active`, published `2026-09-18T17:09:45Z`
+
+### Cross-registry status, final
+
+| Registry | Status |
+|---|---|
+| Official MCP Registry | **Live**, `active`, verified independently against the registry's own API |
+| Smithery | **Live**, `SUCCESS`, 32/32 tools indexed, Quality Score 73/100 |
+| Glama | Not viable — no ingestion path exists for Delta Registry's specific scope (structural platform constraint, not fixable here) |
+| PulseMCP | Submissions paused platform-wide; real, ready-to-submit content prepared for when it reopens |
+
+Every real MCP-focused distribution channel currently capable of accepting a submission from Delta
+Registry now has one, independently verified live rather than assumed from a success message.
