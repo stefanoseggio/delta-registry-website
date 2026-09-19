@@ -1,0 +1,63 @@
+name: Fleet Silent-Failure Health Check
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check every actor's real notice + 30-day failure ratio
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+        run: |
+          FLEET="diario-oficial-cl-monitor uk-hse-enforcement-monitor cordoba-compras-monitor entrerios-compras-monitor
+          mendoza-compras-monitor salta-compras-monitor santafe-compras-monitor tucuman-compras-monitor
+          florida-tenders-monitor pba-tenders-monitor australia-grantconnect-monitor eu-ted-procurement-delta-monitor
+          uae-corporate-registry-monitor uk-modern-slavery-statement-registry-monitor singapore-acra-registry-monitor
+          kipris-patent-trademark-status-monitor regione-lombardia-grants-registry-monitor
+          emerging-market-sovereign-debt-auction-monitor actor-18-b2b-lead-magnet actor-19-maritime-sanctions-monitor
+          actor-20-mdb-procurement-monitor actor-21-patent-ip-enforcement-monitor actor-22-drug-safety-recalls-monitor
+          actor-24-clinical-trials-delta-engine ai-crawler-content-signal-permission-monitor
+          aozora-bunko-public-domain-text-feed sec-enforcement-litigation-delta-feed"
+
+          ISSUES_FOUND=0
+          echo "## Fleet health check — $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Actor | Notice | 30d failures |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+
+          for actor in $FLEET; do
+            RESP=$(curl -s "https://api.apify.com/v2/acts/stefano_seggio~$actor" -H "Authorization: Bearer $APIFY_TOKEN")
+            NOTICE=$(echo "$RESP" | jq -r '.data.notice // "NONE"')
+            FAILED=$(echo "$RESP" | jq -r '.data.stats.publicActorRunStats30Days.FAILED // 0')
+            TOTAL=$(echo "$RESP" | jq -r '.data.stats.publicActorRunStats30Days.TOTAL // 0')
+
+            echo "| $actor | $NOTICE | $FAILED/$TOTAL |" >> "$GITHUB_STEP_SUMMARY"
+
+            if [ "$NOTICE" != "NONE" ] && [ "$NOTICE" != "null" ]; then
+              echo "::warning title=Fleet health::$actor has notice=$NOTICE"
+              ISSUES_FOUND=1
+            fi
+            # A high failure ratio with notice=NONE is the "not yet flagged but clearly
+            # unhealthy" case this check exists for - Apify's own flag can lag real signal
+            # by days, as directly observed on uk-hse-enforcement-monitor this session.
+            if [ "$TOTAL" -gt 0 ] && [ "$FAILED" -gt 0 ]; then
+              RATIO=$(( FAILED * 100 / TOTAL ))
+              if [ "$RATIO" -ge 50 ]; then
+                echo "::warning title=Fleet health::$actor has a $RATIO% failure rate over the last 30 days ($FAILED/$TOTAL) but is not yet flagged Under maintenance"
+                ISSUES_FOUND=1
+              fi
+            fi
+          done
+
+          # Non-blocking by design: this is a monitoring signal for the workflow run summary
+          # and warning annotations, not a merge gate - there is nothing to "fail" against,
+          # it's a scheduled report. Exit 0 always; read the summary/annotations for findings.
+          if [ "$ISSUES_FOUND" -eq 1 ]; then
+            echo "Issues found - see warnings above and the step summary."
+          else
+            echo "All actors: notice=NONE, no actor at or above 50% 30-day failure rate."
+          fi
