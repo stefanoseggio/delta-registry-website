@@ -22,7 +22,7 @@ GH_TOKEN = os.environ["GH_TOKEN"]
 OWNER_APIFY = "stefano_seggio"
 OWNER_GH = "stefanoseggio"
 
-# The 27 repos with a live Apify actor counterpart, in the fleet's canonical order.
+# The 28 repos with a live Apify actor counterpart, in the fleet's canonical order.
 # The 7 delta-registry-*-stub repos and the profile/platform/awesome-list repos are
 # excluded deliberately - they have no Apify actor to query stats for.
 FLEET = [
@@ -37,7 +37,7 @@ FLEET = [
     "actor-20-mdb-procurement-monitor", "actor-21-patent-ip-enforcement-monitor",
     "actor-22-drug-safety-recalls-monitor", "actor-24-clinical-trials-delta-engine",
     "ai-crawler-content-signal-permission-monitor", "aozora-bunko-public-domain-text-feed",
-    "sec-enforcement-litigation-delta-feed",
+    "sec-enforcement-litigation-delta-feed", "page-metadata-extractor",
 ]
 
 
@@ -103,13 +103,26 @@ def ci_badge(status: str) -> str:
     return f'<span class="badge unknown">{status}</span>'
 
 
+# Actors whose Apify Store slug no longer matches their GitHub repo name -
+# the Store listing was renamed after publish, but the linked repo wasn't
+# renamed to match. page-metadata-extractor's real repo is still named
+# "primer-actor" (confirmed live 2026-09-19; github.com/stefanoseggio/
+# page-metadata-extractor does not exist - see primer-actor's own AGENTS.md
+# for the full rename history). Add future renames here rather than
+# assuming slug == repo name.
+GITHUB_REPO_OVERRIDES = {
+    "page-metadata-extractor": "primer-actor",
+}
+
+
 def render_row(slug: str) -> str:
+    repo_name = GITHUB_REPO_OVERRIDES.get(slug, slug)
     apify = apify_actor_state(slug)
-    gh = github_repo_state(slug)
+    gh = github_repo_state(repo_name)
     fail_ratio = f"{apify['failed_30d']}/{apify['total_30d']}"
     return f"""
     <tr>
-      <td><a href="https://github.com/{OWNER_GH}/{slug}">{slug}</a></td>
+      <td><a href="https://github.com/{OWNER_GH}/{repo_name}">{slug}</a></td>
       <td>{notice_badge(apify['notice'])}</td>
       <td>{apify['build']}</td>
       <td>{fail_ratio} (30d)</td>

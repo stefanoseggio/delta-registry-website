@@ -21,7 +21,8 @@ jobs:
           emerging-market-sovereign-debt-auction-monitor actor-18-b2b-lead-magnet actor-19-maritime-sanctions-monitor
           actor-20-mdb-procurement-monitor actor-21-patent-ip-enforcement-monitor actor-22-drug-safety-recalls-monitor
           actor-24-clinical-trials-delta-engine ai-crawler-content-signal-permission-monitor
-          aozora-bunko-public-domain-text-feed sec-enforcement-litigation-delta-feed"
+          aozora-bunko-public-domain-text-feed sec-enforcement-litigation-delta-feed
+          page-metadata-extractor"
 
           ISSUES_FOUND=0
           echo "## Fleet health check — $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_STEP_SUMMARY"
