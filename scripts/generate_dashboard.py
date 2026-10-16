@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generates a static fleet health dashboard from real, live Apify + GitHub API state.
 
-Reads APIFY_TOKEN and GH_TOKEN from the environment. Queries every actor's current
+Reads GH_TOKEN from the environment (Apify data is read from the public, unauthenticated API). Queries every actor's current
 `notice` and `stats` from the Apify API, and every repo's open Dependabot/release-please
 PR count plus latest CI conclusion from the GitHub REST API. Writes a single static HTML
 file to stdout (redirect to public/fleet-status.html in the calling workflow).
@@ -17,7 +17,6 @@ import sys
 import urllib.request
 from datetime import datetime, timezone
 
-APIFY_TOKEN = os.environ["APIFY_TOKEN"]
 GH_TOKEN = os.environ["GH_TOKEN"]
 OWNER_APIFY = "stefano_seggio"
 OWNER_GH = "stefanoseggio"
@@ -51,10 +50,24 @@ def http_get_json(url: str, headers: dict) -> dict | None:
         return None
 
 
+# Six Actors were renamed on the platform after their GitHub repos were created; the repo-name slugs return 404 on the API.
+APIFY_SLUG_OVERRIDES = {
+    "actor-18-b2b-lead-magnet": "osm-b2b-lead-verifier",
+    "actor-19-maritime-sanctions-monitor": "ofac-un-vessel-sanctions-monitor",
+    "actor-20-mdb-procurement-monitor": "world-bank-procurement-debarment-monitor",
+    "actor-21-patent-ip-enforcement-monitor": "ptab-epo-patent-dispute-monitor",
+    "actor-22-drug-safety-recalls-monitor": "fda-ema-drug-recall-monitor",
+    "actor-24-clinical-trials-delta-engine": "clinicaltrials-orange-book-delta",
+}
+
+
 def apify_actor_state(slug: str) -> dict:
+    # PUBLIC, UNAUTHENTICATED read. The public Actor object (~8 KB) carries every field used below (notice, stats,
+    # taggedBuilds). The owner-authenticated object embeds the full source files (0.7-2.7 MB each, 80-329x larger) and was
+    # the source of the account's daily external-transfer drain measured on 2026-10-16.
     data = http_get_json(
-        f"https://api.apify.com/v2/acts/{OWNER_APIFY}~{slug}",
-        {"Authorization": f"Bearer {APIFY_TOKEN}"},
+        f"https://api.apify.com/v2/acts/{OWNER_APIFY}~{APIFY_SLUG_OVERRIDES.get(slug, slug)}",
+        {},
     )
     if not data:
         return {"notice": "unknown", "last_run": "unknown", "build": "unknown", "failed_30d": "?", "total_30d": "?"}

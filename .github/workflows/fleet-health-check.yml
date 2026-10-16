@@ -10,17 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check every actor's real notice + 30-day failure ratio
-        env:
-          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
         run: |
           FLEET="diario-oficial-cl-monitor uk-hse-enforcement-monitor cordoba-compras-monitor entrerios-compras-monitor
           mendoza-compras-monitor salta-compras-monitor santafe-compras-monitor tucuman-compras-monitor
           florida-tenders-monitor pba-tenders-monitor australia-grantconnect-monitor eu-ted-procurement-delta-monitor
           uae-corporate-registry-monitor uk-modern-slavery-statement-registry-monitor singapore-acra-registry-monitor
           kipris-patent-trademark-status-monitor regione-lombardia-grants-registry-monitor
-          emerging-market-sovereign-debt-auction-monitor actor-18-b2b-lead-magnet actor-19-maritime-sanctions-monitor
-          actor-20-mdb-procurement-monitor actor-21-patent-ip-enforcement-monitor actor-22-drug-safety-recalls-monitor
-          actor-24-clinical-trials-delta-engine ai-crawler-content-signal-permission-monitor
+          emerging-market-sovereign-debt-auction-monitor osm-b2b-lead-verifier ofac-un-vessel-sanctions-monitor
+          world-bank-procurement-debarment-monitor ptab-epo-patent-dispute-monitor fda-ema-drug-recall-monitor
+          clinicaltrials-orange-book-delta ai-crawler-content-signal-permission-monitor
           aozora-bunko-public-domain-text-feed sec-enforcement-litigation-delta-feed
           page-metadata-extractor"
 
@@ -31,7 +29,7 @@ jobs:
           echo "|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
 
           for actor in $FLEET; do
-            RESP=$(curl -s "https://api.apify.com/v2/acts/stefano_seggio~$actor" -H "Authorization: Bearer $APIFY_TOKEN")
+            RESP=$(curl -s --max-time 20 "https://api.apify.com/v2/acts/stefano_seggio~$actor")
             NOTICE=$(echo "$RESP" | jq -r '.data.notice // "NONE"')
             FAILED=$(echo "$RESP" | jq -r '.data.stats.publicActorRunStats30Days.FAILED // 0')
             TOTAL=$(echo "$RESP" | jq -r '.data.stats.publicActorRunStats30Days.TOTAL // 0')

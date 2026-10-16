@@ -2,11 +2,15 @@ name: Fleet Health Dashboard
 
 on:
   schedule:
-    - cron: '0 * * * *'   # hourly
+    - cron: '17 */6 * * *'   # every 6 hours (was hourly)
   workflow_dispatch: {}
 
 permissions:
   contents: write
+
+concurrency:
+  group: fleet-dashboard
+  cancel-in-progress: false
 
 jobs:
   build-dashboard:
@@ -20,7 +24,6 @@ jobs:
 
       - name: Generate the dashboard from real, live Apify + GitHub API state
         env:
-          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p public
