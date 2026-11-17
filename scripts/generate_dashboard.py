@@ -21,22 +21,15 @@ GH_TOKEN = os.environ["GH_TOKEN"]
 OWNER_APIFY = "stefano_seggio"
 OWNER_GH = "stefanoseggio"
 
-# The 28 repos with a live Apify actor counterpart, in the fleet's canonical order.
-# The 7 delta-registry-*-stub repos and the profile/platform/awesome-list repos are
-# excluded deliberately - they have no Apify actor to query stats for.
+# The fleet this dashboard watches, in canonical order (portfolio decision of 2026-11-03):
+#  - the three engines, which live in ONE repository (awesome-regulatory-monitors, see GITHUB_REPO_OVERRIDES);
+#  - the seven legacy Actors that still carry revenue and so stay public and monitored.
+# The 21 other legacy Actors are deprecated (hidden from Store search) and no longer monitored; their repositories and the
+# 7 delta-registry-*-stub repos are excluded deliberately.
 FLEET = [
-    "diario-oficial-cl-monitor", "uk-hse-enforcement-monitor", "cordoba-compras-monitor",
-    "entrerios-compras-monitor", "mendoza-compras-monitor", "salta-compras-monitor",
-    "santafe-compras-monitor", "tucuman-compras-monitor", "florida-tenders-monitor",
-    "pba-tenders-monitor", "australia-grantconnect-monitor", "eu-ted-procurement-delta-monitor",
-    "uae-corporate-registry-monitor", "uk-modern-slavery-statement-registry-monitor",
-    "singapore-acra-registry-monitor", "kipris-patent-trademark-status-monitor",
-    "regione-lombardia-grants-registry-monitor", "emerging-market-sovereign-debt-auction-monitor",
-    "actor-18-b2b-lead-magnet", "actor-19-maritime-sanctions-monitor",
-    "actor-20-mdb-procurement-monitor", "actor-21-patent-ip-enforcement-monitor",
-    "actor-22-drug-safety-recalls-monitor", "actor-24-clinical-trials-delta-engine",
-    "ai-crawler-content-signal-permission-monitor", "aozora-bunko-public-domain-text-feed",
-    "sec-enforcement-litigation-delta-feed", "page-metadata-extractor",
+    "global-regtech-compliance-feed", "latam-global-tender-intelligence", "global-corporate-patent-intelligence",
+    "cordoba-compras-monitor", "entrerios-compras-monitor", "mendoza-compras-monitor", "salta-compras-monitor",
+    "santafe-compras-monitor", "tucuman-compras-monitor", "pba-tenders-monitor",
 ]
 
 
@@ -125,6 +118,9 @@ def ci_badge(status: str) -> str:
 # assuming slug == repo name.
 GITHUB_REPO_OVERRIDES = {
     "page-metadata-extractor": "primer-actor",
+    "global-regtech-compliance-feed": "awesome-regulatory-monitors",
+    "latam-global-tender-intelligence": "awesome-regulatory-monitors",
+    "global-corporate-patent-intelligence": "awesome-regulatory-monitors",
 }
 
 
